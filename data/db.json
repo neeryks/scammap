@@ -1,0 +1,408 @@
+{
+  "reports": [
+    {
+      "id": "1",
+      "created_at": "2025-08-15T10:30:00.000Z",
+      "category": "investment_fraud",
+      "location": "mumbai",
+      "city": "Mumbai",
+      "venue_name": "TradePro Investment Solutions",
+      "address": "Andheri East, Mumbai, Maharashtra",
+      "description": "I was contacted via WhatsApp by someone claiming to represent TradePro Investment Solutions. They promised 25% returns in just 30 days on cryptocurrency investments. They showed me fake trading results and convinced me to transfer ₹2,50,000 through UPI. After the payment, they asked for more money to 'unlock' my profits. When I refused, they stopped responding and blocked my number.",
+      "loss_amount_inr": 250000,
+      "payment_method": "UPI",
+      "tactic_tags": [
+        "high_return_promise",
+        "fake_credentials",
+        "urgency_pressure",
+        "social_media_contact"
+      ],
+      "date_time_of_incident": "2025-08-12T14:00:00.000Z",
+      "evidence_ids": [
+        "evidence_1",
+        "evidence_2"
+      ],
+      "indicators": [
+        "unsolicited_contact",
+        "unrealistic_returns",
+        "pressure_tactics",
+        "upfront_payment"
+      ],
+      "outcome": "money_lost",
+      "verification_status": "evidence_backed",
+      "scam_meter_score": 95,
+      "reporter_visibility": "anonymous"
+    },
+    {
+      "id": "2",
+      "created_at": "2025-08-14T16:45:00.000Z",
+      "category": "online_shopping",
+      "location": "bangalore",
+      "city": "Bangalore",
+      "venue_name": "ElectroDeals Online",
+      "address": "Online Platform",
+      "description": "I found a website selling the latest iPhone 15 Pro at 50% discount. The site looked professional with customer reviews and secure payment badges. I paid ₹75,000 through net banking. They sent a tracking number that showed 'delivered' but I never received anything. Customer service stopped responding after payment.",
+      "loss_amount_inr": 75000,
+      "payment_method": "Net Banking",
+      "tactic_tags": [
+        "fake_website",
+        "too_good_to_be_true",
+        "fake_reviews",
+        "professional_appearance"
+      ],
+      "date_time_of_incident": "2025-08-10T11:20:00.000Z",
+      "evidence_ids": [
+        "evidence_3"
+      ],
+      "indicators": [
+        "suspicious_pricing",
+        "new_domain",
+        "no_physical_address",
+        "limited_contact_info"
+      ],
+      "outcome": "money_lost",
+      "verification_status": "unverified",
+      "scam_meter_score": 88,
+      "reporter_visibility": "anonymous"
+    },
+    {
+      "id": "3",
+      "created_at": "2025-08-13T09:15:00.000Z",
+      "category": "job_fraud",
+      "location": "delhi",
+      "city": "Delhi",
+      "venue_name": "Global HR Solutions",
+      "address": "Connaught Place, New Delhi",
+      "description": "Received a call about a high-paying data entry job. They claimed to be from Global HR Solutions and asked for ₹15,000 as security deposit for laptop and training materials. They promised salary of ₹45,000/month for simple copy-paste work. After payment, they kept asking for more fees for 'registration' and 'documentation'. No job materialized.",
+      "loss_amount_inr": 15000,
+      "payment_method": "UPI",
+      "tactic_tags": [
+        "work_from_home",
+        "upfront_fees",
+        "high_salary_promise",
+        "fake_company"
+      ],
+      "date_time_of_incident": "2025-08-11T13:30:00.000Z",
+      "evidence_ids": [],
+      "indicators": [
+        "upfront_payment",
+        "too_good_salary",
+        "no_interview",
+        "pressure_tactics"
+      ],
+      "outcome": "money_lost",
+      "verification_status": "unverified",
+      "scam_meter_score": 82,
+      "reporter_visibility": "anonymous"
+    },
+    {
+      "id": "4",
+      "created_at": "2025-08-12T14:20:00.000Z",
+      "category": "banking_fraud",
+      "location": "pune",
+      "city": "Pune",
+      "venue_name": "HDFC Bank (Impersonation)",
+      "address": "Phone Call",
+      "description": "Got a call from someone claiming to be from HDFC Bank fraud department. They said suspicious transactions were detected on my account and I needed to verify my details immediately. They knew some of my personal information which made it seem legitimate. They asked me to share OTP to 'secure' my account. Later realized ₹45,000 was debited from my account.",
+      "loss_amount_inr": 45000,
+      "payment_method": "Bank Transfer",
+      "tactic_tags": [
+        "bank_impersonation",
+        "urgency_tactics",
+        "social_engineering",
+        "otp_fraud"
+      ],
+      "date_time_of_incident": "2025-08-09T15:45:00.000Z",
+      "evidence_ids": [
+        "evidence_4"
+      ],
+      "indicators": [
+        "unsolicited_call",
+        "asks_for_otp",
+        "creates_urgency",
+        "requests_personal_info"
+      ],
+      "outcome": "money_lost",
+      "verification_status": "evidence_backed",
+      "scam_meter_score": 92,
+      "reporter_visibility": "anonymous"
+    },
+    {
+      "id": "5",
+      "created_at": "2025-08-11T11:30:00.000Z",
+      "category": "lottery_fraud",
+      "location": "chennai",
+      "city": "Chennai",
+      "venue_name": "International Lottery Commission",
+      "address": "Email Communication",
+      "description": "Received an email saying I won $50,000 in an international lottery. They had official-looking letterhead and logos. To claim the prize, they asked for processing fees of ₹25,000. They provided fake documentation and certificates. After payment, they asked for more money for 'tax clearance'. Realized it was a scam when they kept demanding more fees.",
+      "loss_amount_inr": 25000,
+      "payment_method": "Wire Transfer",
+      "tactic_tags": [
+        "lottery_scam",
+        "fake_documentation",
+        "processing_fees",
+        "international_angle"
+      ],
+      "date_time_of_incident": "2025-08-08T10:15:00.000Z",
+      "evidence_ids": [],
+      "indicators": [
+        "unsolicited_windfall",
+        "upfront_fees",
+        "foreign_lottery",
+        "fake_credentials"
+      ],
+      "outcome": "money_lost",
+      "verification_status": "unverified",
+      "scam_meter_score": 78,
+      "reporter_visibility": "anonymous"
+    },
+    {
+      "id": "6",
+      "created_at": "2025-08-10T08:45:00.000Z",
+      "category": "romance_fraud",
+      "location": "hyderabad",
+      "city": "Hyderabad",
+      "venue_name": "Dating App Profile",
+      "address": "Online Dating Platform",
+      "description": "Met someone on a dating app who claimed to be a software engineer working abroad. After weeks of chatting, they said they were coming to India to meet me but got stuck at customs and needed ₹80,000 for clearance. They shared fake documents and created emotional pressure. Sent money through cryptocurrency thinking it was genuine love. Person disappeared after payment.",
+      "loss_amount_inr": 80000,
+      "payment_method": "Cryptocurrency",
+      "tactic_tags": [
+        "romance_scam",
+        "fake_identity",
+        "emotional_manipulation",
+        "fake_emergency"
+      ],
+      "date_time_of_incident": "2025-08-06T19:30:00.000Z",
+      "evidence_ids": [
+        "evidence_5"
+      ],
+      "indicators": [
+        "too_perfect_profile",
+        "avoids_video_calls",
+        "asks_for_money",
+        "emergency_story"
+      ],
+      "outcome": "money_lost",
+      "verification_status": "unverified",
+      "scam_meter_score": 85,
+      "reporter_visibility": "anonymous"
+    },
+    {
+      "id": "7",
+      "created_at": "2025-08-09T13:10:00.000Z",
+      "category": "tech_support",
+      "location": "kolkata",
+      "city": "Kolkata",
+      "venue_name": "Microsoft Support (Fake)",
+      "address": "Phone Call",
+      "description": "Received a call claiming to be from Microsoft technical support. They said my computer was infected with viruses and they detected suspicious activity. They guided me to install remote access software and showed fake error messages. Asked for ₹35,000 to fix the 'critical issues'. Realized it was fake when real Microsoft confirmed they never make such calls.",
+      "loss_amount_inr": 35000,
+      "payment_method": "Credit Card",
+      "tactic_tags": [
+        "tech_support_scam",
+        "remote_access",
+        "fake_microsoft",
+        "fear_tactics"
+      ],
+      "date_time_of_incident": "2025-08-07T16:20:00.000Z",
+      "evidence_ids": [],
+      "indicators": [
+        "unsolicited_call",
+        "remote_access_request",
+        "immediate_payment",
+        "fear_inducing"
+      ],
+      "outcome": "money_lost",
+      "verification_status": "unverified",
+      "scam_meter_score": 89,
+      "reporter_visibility": "anonymous"
+    },
+    {
+      "id": "8",
+      "created_at": "2025-08-08T17:25:00.000Z",
+      "category": "investment_fraud",
+      "location": "ahmedabad",
+      "city": "Ahmedabad",
+      "venue_name": "CryptoPro Trading",
+      "address": "Online Platform",
+      "description": "Joined a Telegram group about cryptocurrency trading. Admin claimed to have insider information and guaranteed profits. They showed fake trading screenshots and testimonials. Convinced me to invest ₹1,20,000 in their 'exclusive' trading bot. Initially showed small profits to build trust, then asked for more investment. When I tried to withdraw, they said account was frozen and demanded more money to unfreeze it.",
+      "loss_amount_inr": 120000,
+      "payment_method": "Cryptocurrency",
+      "tactic_tags": [
+        "crypto_scam",
+        "telegram_group",
+        "insider_info",
+        "fake_profits"
+      ],
+      "date_time_of_incident": "2025-08-05T12:00:00.000Z",
+      "evidence_ids": [
+        "evidence_6"
+      ],
+      "indicators": [
+        "guaranteed_profits",
+        "exclusive_opportunity",
+        "social_proof_fake",
+        "withdrawal_restrictions"
+      ],
+      "outcome": "money_lost",
+      "verification_status": "evidence_backed",
+      "scam_meter_score": 94,
+      "reporter_visibility": "anonymous"
+    },
+    {
+      "id": "9",
+      "created_at": "2025-08-07T12:40:00.000Z",
+      "category": "fake_loan",
+      "location": "jaipur",
+      "city": "Jaipur",
+      "venue_name": "QuickCash Loans",
+      "address": "Online Application",
+      "description": "Applied for personal loan through an app called QuickCash Loans. They approved my loan of ₹5,00,000 instantly without any documentation. But before disbursing, they asked for processing fee of ₹50,000. They said it's refundable and will be added to loan amount. After payment, they asked for more fees for insurance and GST. No loan was ever disbursed despite multiple payments.",
+      "loss_amount_inr": 50000,
+      "payment_method": "UPI",
+      "tactic_tags": [
+        "fake_loan_app",
+        "processing_fees",
+        "instant_approval",
+        "multiple_charges"
+      ],
+      "date_time_of_incident": "2025-08-04T14:15:00.000Z",
+      "evidence_ids": [],
+      "indicators": [
+        "upfront_fees",
+        "too_easy_approval",
+        "unregistered_lender",
+        "multiple_fee_requests"
+      ],
+      "outcome": "money_lost",
+      "verification_status": "unverified",
+      "scam_meter_score": 86,
+      "reporter_visibility": "anonymous"
+    },
+    {
+      "id": "10",
+      "created_at": "2025-08-06T15:55:00.000Z",
+      "category": "online_shopping",
+      "location": "lucknow",
+      "city": "Lucknow",
+      "venue_name": "BrandHub Store",
+      "address": "Facebook Marketplace",
+      "description": "Saw an ad on Facebook for branded shoes at 70% discount. The seller had good ratings and responded quickly. They asked for advance payment and promised COD for balance amount. Sent ₹12,000 as advance for shoes worth ₹40,000. They provided fake tracking details and kept giving excuses about delivery delays. Eventually stopped responding and deleted their profile.",
+      "loss_amount_inr": 12000,
+      "payment_method": "UPI",
+      "tactic_tags": [
+        "social_media_scam",
+        "advance_payment",
+        "fake_tracking",
+        "too_good_discount"
+      ],
+      "date_time_of_incident": "2025-08-03T11:45:00.000Z",
+      "evidence_ids": [],
+      "indicators": [
+        "advance_payment_required",
+        "suspicious_discount",
+        "new_seller_profile",
+        "pressure_for_quick_payment"
+      ],
+      "outcome": "money_lost",
+      "verification_status": "unverified",
+      "scam_meter_score": 75,
+      "reporter_visibility": "anonymous"
+    },
+    {
+      "id": "11",
+      "created_at": "2025-08-05T09:30:00.000Z",
+      "category": "investment_fraud",
+      "location": "gurgaon",
+      "city": "Gurgaon",
+      "venue_name": "StockGenius Advisory",
+      "address": "WhatsApp Group",
+      "description": "Added to a WhatsApp group called 'StockGenius VIP Tips'. Admin shared stock recommendations that seemed to be very accurate. They claimed to have connections with big investors and provided insider tips. After building trust over weeks, they promoted a 'pre-IPO investment opportunity' requiring ₹3,00,000. Promised 10x returns in 6 months. After payment, group was deleted and all contacts stopped responding.",
+      "loss_amount_inr": 300000,
+      "payment_method": "Bank Transfer",
+      "tactic_tags": [
+        "stock_tips_scam",
+        "whatsapp_group",
+        "insider_trading",
+        "pre_ipo_fraud"
+      ],
+      "date_time_of_incident": "2025-08-02T16:30:00.000Z",
+      "evidence_ids": [
+        "evidence_7"
+      ],
+      "indicators": [
+        "too_good_accuracy",
+        "insider_claims",
+        "exclusive_opportunity",
+        "large_upfront_investment"
+      ],
+      "outcome": "money_lost",
+      "verification_status": "evidence_backed",
+      "scam_meter_score": 96,
+      "reporter_visibility": "anonymous"
+    },
+    {
+      "id": "12",
+      "created_at": "2025-08-04T14:10:00.000Z",
+      "category": "lottery_fraud",
+      "location": "kochi",
+      "city": "Kochi",
+      "venue_name": "Kerala State Lottery (Fake)",
+      "address": "SMS & Phone Call",
+      "description": "Received SMS saying I won ₹25 lakhs in Kerala State Lottery. They called to congratulate and said they needed processing fee of ₹30,000 to release the prize money. They sent fake lottery ticket images and government authorization letters. Convinced by official-looking documents, I paid the processing fee. They then asked for tax payment of ₹50,000. Realized it was fake when actual lottery office confirmed no such draw.",
+      "loss_amount_inr": 30000,
+      "payment_method": "UPI",
+      "tactic_tags": [
+        "lottery_fraud",
+        "fake_government",
+        "processing_fees",
+        "fake_documentation"
+      ],
+      "date_time_of_incident": "2025-08-01T10:20:00.000Z",
+      "evidence_ids": [],
+      "indicators": [
+        "unsolicited_windfall",
+        "government_impersonation",
+        "upfront_fees",
+        "fake_official_docs"
+      ],
+      "outcome": "money_lost",
+      "verification_status": "unverified",
+      "scam_meter_score": 83,
+      "reporter_visibility": "anonymous"
+    },
+    {
+      "id": "180563b7-b1fd-4b0e-b69f-aee0aab4ae4a",
+      "created_at": "2025-08-18T17:44:31.904Z",
+      "category": "dating",
+      "location": {
+        "lat": 12.9,
+        "lon": 77.6,
+        "precision_level": "block"
+      },
+      "description": "Test incident with non-monetary impact.",
+      "impact_types": [
+        "harassment",
+        "privacy"
+      ],
+      "impact_summary": "Received threats and doxxing.",
+      "tactic_tags": [
+        "fake_profile"
+      ],
+      "evidence_ids": [],
+      "indicators": [
+        "+9100000000"
+      ],
+      "verification_status": "unverified",
+      "scam_meter_score": 20,
+      "reporter_visibility": "anonymous"
+    }
+  ],
+  "venues": [],
+  "indicators": [],
+  "evidence": [],
+  "users": [],
+  "verificationRecords": []
+}
