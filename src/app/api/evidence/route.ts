@@ -5,6 +5,7 @@ import crypto from 'crypto'
 import { processImage, detectPII } from '@/lib/moderation'
 import fs from 'fs/promises'
 import path from 'path'
+import { createEvidenceFromBuffer } from '@/lib/storage'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,7 +22,11 @@ export async function POST(req: NextRequest) {
 
   const processed = await processImage(buffer, { blur: true })
   const hash = crypto.createHash('sha256').update(processed).digest('hex')
-
+  const useAppwrite = process.env.APPWRITE_ENABLED === 'true'
+  if (useAppwrite) {
+    const record = await createEvidenceFromBuffer(processed)
+    return NextResponse.json({ ...record, hash })
+  }
   const id = uuidv4()
   const uploadDir = path.join(process.cwd(), 'public', 'uploads')
   await fs.mkdir(uploadDir, { recursive: true })

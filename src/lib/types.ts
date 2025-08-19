@@ -40,6 +40,8 @@ export interface Report {
   venue_name?: string;
   address?: string;
   description: string;
+  // Reporter linkage (Appwrite user id when available)
+  reporter_user_id?: string;
   
   // Impact/Loss Information
   loss_type?: 'financial' | 'emotional' | 'time' | 'personal-data' | 'harassment' | 'reputation' | 'privacy' | 'multiple' | 'other-impact';

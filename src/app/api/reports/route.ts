@@ -1,53 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { initDB, db } from '@/lib/db'
-import { Report } from '@/lib/types'
+import { listReports, createReport } from '@/lib/storage'
 import { ReportSchema } from '@/lib/schemas'
-import { v4 as uuidv4 } from 'uuid'
-import dayjs from 'dayjs'
-import { computeScamMeterScore } from '@/lib/scoring'
+import { validateAppwriteJWT } from '@/lib/appwriteAuth'
 
-export async function GET() {
-  await initDB()
-  return NextResponse.json(db.data!.reports)
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url)
+  const category = searchParams.get('category') || undefined
+  const city = searchParams.get('city') || undefined
+  const mine = searchParams.get('mine') === 'true'
+  const limit = searchParams.get('limit') ? Number(searchParams.get('limit')) : undefined
+  const offset = searchParams.get('offset') ? Number(searchParams.get('offset')) : undefined
+  let authUserId: string | undefined
+  if (mine) {
+    const authz = req.headers.get('authorization') || ''
+    if (authz.startsWith('Bearer ')) {
+      const jwt = authz.substring('Bearer '.length).trim()
+      const verified = await validateAppwriteJWT(jwt)
+      if (verified) authUserId = verified.userId
+    }
+  }
+  const { items, total } = await listReports({ category, city, limit, offset, ...(authUserId ? { reporter_user_id: authUserId } : {}) })
+  return NextResponse.json({ total, items, limit: limit ?? 50, offset: offset ?? 0 })
 }
 
 export async function POST(req: NextRequest) {
-  await initDB()
-  const json = await req.json()
+  // Require authentication via Appwrite JWT
+  const authz = req.headers.get('authorization') || ''
+  if (!authz.startsWith('Bearer ')) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+  }
+  const jwt = authz.substring('Bearer '.length).trim()
+  const verified = await validateAppwriteJWT(jwt)
+  if (!verified) {
+    return NextResponse.json({ error: 'Invalid or expired session' }, { status: 401 })
+  }
+
+  let json: unknown
+  try {
+    const contentType = req.headers.get('content-type') || ''
+    if (contentType.includes('application/json')) {
+      json = await req.json()
+    } else {
+      const form = await req.formData()
+      json = Object.fromEntries(Array.from(form.entries())) as Record<string, unknown>
+      const obj = json as Record<string, unknown>
+      if (obj.loss_amount_inr) obj.loss_amount_inr = Number(obj.loss_amount_inr as string)
+      if (obj.impact_types && typeof obj.impact_types === 'string') {
+        try { obj.impact_types = JSON.parse(obj.impact_types as string) } catch {}
+      }
+      if (obj.tactic_tags && typeof obj.tactic_tags === 'string') {
+        try { obj.tactic_tags = JSON.parse(obj.tactic_tags as string) } catch {}
+      }
+      if (obj.indicators && typeof obj.indicators === 'string') {
+        try { obj.indicators = JSON.parse(obj.indicators as string) } catch {}
+      }
+      if (obj.evidence_ids && typeof obj.evidence_ids === 'string') {
+        try { obj.evidence_ids = JSON.parse(obj.evidence_ids as string) } catch {}
+      }
+    }
+  } catch {
+    return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
+  }
   const parsed = ReportSchema.safeParse(json)
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
   const input = parsed.data
-
-  const report: Report = {
-    id: uuidv4(),
-    created_at: dayjs().toISOString(),
-    category: input.category,
-    location: input.location,
-    city: input.city,
-    venue_name: input.venue_name,
-    address: input.address,
-    description: input.description,
-    loss_amount_inr: input.loss_amount_inr,
-    payment_method: input.payment_method,
-  impact_types: input.impact_types ?? [],
-  impact_summary: input.impact_summary,
-    tactic_tags: input.tactic_tags ?? [],
-    date_time_of_incident: input.date_time_of_incident,
-    evidence_ids: input.evidence_ids ?? [],
-    indicators: input.indicators ?? [],
-    outcome: input.outcome,
-    verification_status: 'unverified',
-    scam_meter_score: 0,
-    reporter_visibility: input.reporter_visibility ?? 'anonymous'
-  }
-
-  const corroborationCount = db.data!.reports.filter(r => r.venue_name && r.venue_name === report.venue_name).length
-  const score = computeScamMeterScore(report, corroborationCount, false, false, false)
-  report.scam_meter_score = score.score
-
-  db.data!.reports.push(report)
-  await db.write()
-  return NextResponse.json({ report, scoring: score })
+  // Auth guaranteed now
+  let reporter_visibility: 'anonymous' | 'alias' | 'verified' | undefined = 'verified'
+  let reporter_user_id: string | undefined = verified.userId
+  const { report, scoring } = await createReport({ ...input, reporter_visibility, reporter_user_id })
+  return NextResponse.json({ report, scoring })
 }

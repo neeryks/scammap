@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unescaped-entities */
 import Link from 'next/link'
 import { Report } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -11,7 +12,8 @@ async function getReports(): Promise<Report[]> {
   if (!res.ok) {
     throw new Error('Failed to fetch reports')
   }
-  return res.json()
+  const data = await res.json()
+  return data.items ?? data
 }
 
 export default async function IncidentsPage({ searchParams }: { searchParams: Promise<{ category?: string, q?: string }> }) {

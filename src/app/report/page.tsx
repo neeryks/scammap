@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,6 +12,8 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select"
+import { account } from '@/lib/appwrite.client'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface FormData {
   venue: string
@@ -27,6 +29,8 @@ interface FormData {
 }
 
 export default function ReportPage() {
+  const { user, loading } = useAuth()
+  const [mounted, setMounted] = useState(false)
   const [formData, setFormData] = useState<FormData>({
     venue: "",
     address: "",
@@ -41,6 +45,11 @@ export default function ReportPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
 
+  // Prevent hydration mismatches
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
@@ -54,23 +63,47 @@ export default function ReportPage() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
+    if (!user) {
+      window.location.href = '/auth/login?next=/report'
+      return
+    }
     setIsSubmitting(true)
     setSubmitStatus('idle')
 
     try {
-      const formDataToSend = new FormData()
-      Object.entries(formData).forEach(([key, value]) => {
-        if (value !== undefined) {
-          formDataToSend.append(key, value)
-        }
-      })
+      const payload = {
+        category: formData.scamType,
+        venue_name: formData.venue,
+        address: formData.address,
+        city: formData.address.split(',').slice(-2)[0]?.trim() || formData.address.split(',')[0]?.trim() || 'Unknown',
+        description: formData.description,
+        loss_type: formData.lossType || undefined,
+        loss_amount_inr: formData.monetaryAmount ? Number(String(formData.monetaryAmount).replace(/[^0-9]/g,'')) : undefined,
+        emotional_impact: formData.emotionalImpact || undefined,
+        time_wasted: formData.timeWasted || undefined,
+        personal_data_compromised: formData.personalDataCompromised || undefined,
+        impact_types: [],
+        tactic_tags: [],
+        evidence_ids: [],
+        indicators: []
+      }
 
+      let authHeader: Record<string,string> = {}
+      try {
+        const jwt = await account.createJWT()
+        authHeader = { Authorization: `Bearer ${jwt.jwt}` }
+      } catch (error) {
+        console.error('Failed to get session. Please sign in again.')
+        window.location.href = '/auth/login?next=/report'
+        return
+      }
       const response = await fetch('/api/reports', {
         method: 'POST',
-        body: formDataToSend,
+        headers: { 'Content-Type': 'application/json', ...authHeader },
+        body: JSON.stringify(payload),
       })
 
-      if (response.ok) {
+  if (response.ok) {
         setSubmitStatus('success')
         setFormData({
           venue: "",
@@ -83,7 +116,17 @@ export default function ReportPage() {
           personalDataCompromised: "",
           description: ""
         })
+      } else if (response.status === 401) {
+        setSubmitStatus('error')
+        window.location.href = '/auth/login?next=/report'
+        return
       } else {
+        try {
+          const errorData = await response.json()
+          console.error('API Error:', errorData)
+        } catch {
+          console.error('API Error: Non-JSON response, status:', response.status)
+        }
         setSubmitStatus('error')
       }
     } catch (error) {
@@ -107,13 +150,43 @@ export default function ReportPage() {
           </p>
         </div>
 
-        {/* Report Form */}
-        <div className="max-w-2xl mx-auto">
-          <Card>
+    {/* Report Form */}
+    <div className="max-w-2xl mx-auto">
+          {/* User Status */}
+          {mounted && (
+            <div className="mb-6 p-4 rounded-lg border bg-slate-50">
+              <div className="flex items-center gap-3">
+                <div className={`w-3 h-3 rounded-full ${user ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+                <div>
+      {user ? (
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">
+                        Reporting as: {user.name || user.email}
+                      </p>
+                      <p className="text-xs text-slate-600">
+                        Your report will be linked to your account
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">
+        Please sign in to report an incident
+                      </p>
+                      <p className="text-xs text-slate-600">
+        <a href="/auth/login?next=/report" className="text-slate-800 underline">Sign in</a> to continue
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          
+      <Card aria-disabled={!user} className={!user ? 'opacity-50 pointer-events-none select-none' : ''}>
             <CardHeader>
               <CardTitle>Incident Details</CardTitle>
               <CardDescription>
-                Please provide as much detail as possible about the scam incident.
+        {user ? 'Please provide as much detail as possible about the scam incident.' : 'Sign in to fill and submit the form.'}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -370,7 +443,7 @@ export default function ReportPage() {
                 {/* Submit Button */}
                 <Button
                   type="submit"
-                  disabled={isSubmitting || !formData.venue || !formData.address || !formData.scamType || !formData.lossType || !formData.description}
+                  disabled={!user || isSubmitting || !formData.venue || !formData.address || !formData.scamType || !formData.lossType || !formData.description}
                   className="w-full h-12 bg-slate-900 hover:bg-slate-800 text-white font-semibold"
                 >
                   {isSubmitting ? 'Submitting...' : 'Submit Report'}

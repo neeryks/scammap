@@ -264,6 +264,46 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 ```
 
+### Appwrite Setup
+
+1. Create a project in Appwrite and note the Project ID.
+2. Create a Database and note the Database ID.
+3. Create a Collection "reports" with attributes:
+   - id (text, required, key)
+   - created_at (datetime)
+   - category (enum: see `src/lib/types.ts` Category)
+   - location (string)
+   - city (string)
+   - venue_name (string)
+   - address (string)
+   - description (string)
+   - loss_type (string)
+   - loss_amount_inr (integer)
+   - emotional_impact (string)
+   - time_wasted (string)
+   - personal_data_compromised (string)
+   - payment_method (string)
+   - impact_types (array[string])
+   - impact_summary (string)
+   - tactic_tags (array[string])
+   - date_time_of_incident (string)
+   - evidence_ids (array[string])
+   - indicators (array[string])
+   - outcome (string)
+   - verification_status (string)
+   - scam_meter_score (integer)
+   - reporter_visibility (string)
+4. Create a Storage bucket for evidence and note its Bucket ID.
+5. Create an API Key with permissions to Databases (read/write) and Storage (create/read).
+6. Fill `.env.local` with:
+   - APPWRITE_ENABLED=true
+   - APPWRITE_ENDPOINT, APPWRITE_PROJECT_ID, APPWRITE_API_KEY
+   - APPWRITE_DATABASE_ID, APPWRITE_COLLECTION_REPORTS_ID, APPWRITE_BUCKET_EVIDENCE_ID
+   - NEXT_PUBLIC_APPWRITE_ENDPOINT, NEXT_PUBLIC_APPWRITE_PROJECT_ID
+7. Auth: enable Email/Password provider in Appwrite Auth settings.
+
+After configuration, the API will automatically use Appwrite instead of local JSON LowDB.
+
 ### Monitoring
 - Error tracking with error boundaries
 - Performance monitoring

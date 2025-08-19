@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unescaped-entities */
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 

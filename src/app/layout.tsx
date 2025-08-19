@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 import { Button } from "@/components/ui/button";
+import AccountMenu from '@/components/AccountMenu'
+import { AuthProvider } from '@/contexts/AuthContext'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,37 +30,41 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-50 text-slate-900`}>
-        <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-          <div className="mx-auto w-full max-w-7xl px-4">
-            <div className="flex h-16 items-center justify-between">
-              <Link href="/" className="text-xl font-bold text-slate-900 hover:text-slate-600 transition-colors">
-                ScamMapper
-              </Link>
-              <nav className="hidden gap-6 text-sm font-medium md:flex">
-                <Link href="/map" className="text-slate-600 hover:text-slate-900 transition-colors">Map</Link>
-                <Link href="/incidents" className="text-slate-600 hover:text-slate-900 transition-colors">Incidents</Link>
-                <Link href="/report" className="text-slate-600 hover:text-slate-900 transition-colors">Report</Link>
-              </nav>
-              <Link href="/report">
-                <Button size="sm">
-                  Report Incident
-                </Button>
-              </Link>
+        <AuthProvider>
+          <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+            <div className="mx-auto w-full max-w-7xl px-4">
+              <div className="flex h-16 items-center justify-between">
+                <Link href="/" className="text-xl font-bold text-slate-900 hover:text-slate-600 transition-colors">
+                  ScamMapper
+                </Link>
+                <nav className="hidden gap-6 text-sm font-medium md:flex">
+                  <Link href="/map" className="text-slate-600 hover:text-slate-900 transition-colors">Map</Link>
+                  <Link href="/incidents" className="text-slate-600 hover:text-slate-900 transition-colors">Incidents</Link>
+                </nav>
+                <div className="flex items-center gap-3">
+                  <Link href="/report">
+                    <Button size="sm">
+                      Report Incident
+                    </Button>
+                  </Link>
+                  <AccountMenu />
+                </div>
+              </div>
             </div>
-          </div>
-        </header>
-        <main className="mx-auto w-full max-w-7xl px-4 py-8">
-          {children}
-        </main>
-        <footer className="border-t border-slate-200 bg-white py-8 text-sm text-slate-600">
-          <div className="mx-auto w-full max-w-7xl px-4 flex items-center justify-between">
-            <span>© {new Date().getFullYear()} ScamMapper</span>
-            <div className="flex gap-6">
-              <Link href="/policies" className="hover:text-slate-900 transition-colors">Legal</Link>
-              <Link href="/incidents" className="hover:text-slate-900 transition-colors">Browse</Link>
+          </header>
+          <main className="mx-auto w-full max-w-7xl px-4 py-8">
+            {children}
+          </main>
+          <footer className="border-t border-slate-200 bg-white py-8 text-sm text-slate-600">
+            <div className="mx-auto w-full max-w-7xl px-4 flex items-center justify-between">
+              <span>© {new Date().getFullYear()} ScamMapper</span>
+              <div className="flex gap-6">
+                <Link href="/policies" className="hover:text-slate-900 transition-colors">Legal</Link>
+                <Link href="/incidents" className="hover:text-slate-900 transition-colors">Browse</Link>
+              </div>
             </div>
-          </div>
-        </footer>
+          </footer>
+        </AuthProvider>
       </body>
     </html>
   );

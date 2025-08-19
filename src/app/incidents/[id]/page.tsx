@@ -4,19 +4,16 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
-async function getReports(): Promise<Report[]> {
+async function getReport(id: string): Promise<Report | null> {
   const base = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
-  const res = await fetch(`${base}/api/reports`, { cache: 'no-store' })
-  if (!res.ok) {
-    throw new Error('Failed to fetch reports')
-  }
+  const res = await fetch(`${base}/api/reports/${id}`, { cache: 'no-store' })
+  if (!res.ok) return null
   return res.json()
 }
 
 export default async function IncidentDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const all = await getReports()
-  const r = all.find(x => x.id === id)
+  const r = await getReport(id)
   
   if (!r) {
     return (

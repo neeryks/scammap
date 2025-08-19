@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unescaped-entities */
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -8,7 +9,8 @@ async function getReports(q: string, category?: string): Promise<Report[]> {
   if (!res.ok) {
     throw new Error('Failed to fetch reports')
   }
-  const data: Report[] = await res.json()
+  const payload = await res.json()
+  const data: Report[] = payload.items ?? payload
   const query = q.toLowerCase()
   return data.filter((r: Report) =>
     (!category || category === 'all' || r.category === category) && (
