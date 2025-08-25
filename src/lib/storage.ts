@@ -34,8 +34,7 @@ async function getCollectionAttributeKeys(): Promise<Set<string>> {
     process.env.APPWRITE_COLLECTION_REPORTS_ID!
   ) as unknown as { attributes?: Array<{ key: string }> }
   const keys = new Set<string>((col.attributes || []).map(a => a.key))
-  // Always allow $id if present and common fields
-  ;['id','created_at','category','location','city','venue_name','address','description','reporter_user_id','loss_type','loss_amount_inr','emotional_impact','time_wasted','personal_data_compromised','payment_method','impact_types','impact_summary','tactic_tags','date_time_of_incident','evidence_ids','indicators','outcome','verification_status','scam_meter_score','reporter_visibility'].forEach(k => keys.add(k))
+  // Note: do NOT forcibly add extra keys; rely strictly on collection schema to avoid document_invalid_structure
   attrKeysCache = { keys, ts: now }
   return keys
 }
@@ -89,7 +88,7 @@ export async function getReport(id: string) {
   return doc as unknown as Report
 }
 
-export type CreateReportInput = Omit<Report, 'id' | 'created_at' | 'verification_status' | 'scam_meter_score' | 'reporter_visibility'> & {
+export type CreateReportInput = Omit<Report, 'id' | 'created_at' | 'scam_meter_score' | 'reporter_visibility'> & {
   reporter_visibility?: Report['reporter_visibility']
 }
 
@@ -114,10 +113,10 @@ export async function createReport(input: CreateReportInput) {
     }
   }
 
-  // Normalize location to string for Appwrite schema compatibility
+  // Normalize location to plain "lat,lon" string (drop precision suffix to align with simple string attribute)
   const normalizedLocation = typeof input.location === 'string' || !input.location
     ? (input.location as string | undefined)
-    : `${input.location.lat},${input.location.lon} (${input.location.precision_level})`
+    : `${input.location.lat},${input.location.lon}`
 
   const base: Report = {
     id: uuidv4(),
@@ -138,7 +137,6 @@ export async function createReport(input: CreateReportInput) {
     evidence_ids: input.evidence_ids ?? [],
     indicators: input.indicators ?? [],
     outcome: input.outcome,
-    verification_status: 'unverified',
     scam_meter_score: 0,
     reporter_visibility: input.reporter_visibility ?? 'anonymous'
   }
@@ -156,9 +154,13 @@ export async function createReport(input: CreateReportInput) {
   // Filter payload to only known attributes to avoid document_invalid_structure
   const allowed = await getCollectionAttributeKeys()
   const payload: Record<string, unknown> = {}
+  // Only include keys defined in collection attribute schema
   Object.entries(base).forEach(([k, v]) => {
-    if (allowed.has(k)) payload[k] = v
+    if (allowed.has(k)) {
+      payload[k] = v
+    }
   })
+  // If scam_meter_score not in schema yet, that's fine; we compute it but only send when attribute exists
   let created
   try {
     created = await databases!.createDocument(
@@ -168,17 +170,21 @@ export async function createReport(input: CreateReportInput) {
       payload
     )
   } catch (err) {
-    // Last-resort: drop scam_meter_score if present and retry (during indexing window)
-    if ('scam_meter_score' in payload) {
-      delete payload.scam_meter_score
+    // Attempt recovery: remove any keys that might have been added race-condition style
+    const retryPayload = { ...payload }
+    // Common culprits when schema not yet updated
+    ;['scam_meter_score','reporter_visibility','loss_amount_inr','location'].forEach(k => {
+      if (!allowed.has(k)) delete (retryPayload as any)[k]
+    })
+    try {
       created = await databases!.createDocument(
         process.env.APPWRITE_DATABASE_ID!,
         process.env.APPWRITE_COLLECTION_REPORTS_ID!,
         base.id,
-        payload
+        retryPayload
       )
-    } else {
-      throw err
+    } catch (err2) {
+      throw err2
     }
   }
   return { report: created as unknown as Report, scoring: score }

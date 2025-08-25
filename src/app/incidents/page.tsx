@@ -3,8 +3,8 @@ import Link from 'next/link'
 import { Report } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import IncidentsSearch from '@/components/IncidentsSearch'
 
 async function getReports(): Promise<Report[]> {
   const base = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
@@ -39,7 +39,7 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
   return (
     <div className="min-h-screen">
       {/* Hero Section - matching homepage style */}
-      <div className="relative overflow-hidden bg-gradient-to-b from-slate-50 to-white">
+      <div className="relative bg-gradient-to-b from-slate-50 to-white">
         <div className="mx-auto max-w-4xl px-4 py-16 text-center sm:py-24">
           <div className="space-y-6">
             <div className="space-y-4">
@@ -52,23 +52,11 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
             </div>
             
             {/* Enhanced Search Bar - matching homepage */}
-            <div className="mx-auto max-w-xl">
-              <form action="/incidents" className="relative">
-                <Input 
-                  name="q" 
-                  placeholder="Search by venue, city, or scam type..." 
-                  defaultValue={searchQuery}
-                  className="h-14 pl-4 pr-20 text-base bg-white border-2 border-slate-200 shadow-lg"
-                />
-                <Button 
-                  type="submit"
-                  className="absolute right-2 top-2 h-10 px-6 bg-slate-900 hover:bg-slate-800"
-                  size="sm"
-                >
-                  Search
-                </Button>
-                <input type="hidden" name="category" value={category} />
-              </form>
+            <div className="relative z-50">
+              <IncidentsSearch 
+                defaultValue={searchQuery}
+                category={category}
+              />
             </div>
             
             {/* Active Filters */}
@@ -96,26 +84,17 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
         </div>
       </div>
 
-      {/* Stats Section - matching homepage style */}
+      {/* Stats Section - Centered Total Reports */}
       <div className="bg-slate-50 py-12">
         <div className="mx-auto max-w-7xl px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            <Card className="border-0 bg-white shadow-lg">
-              <CardContent className="p-6 text-center">
-                <div className="text-3xl font-bold text-slate-900">{all.length}</div>
-                <div className="text-sm text-slate-600">Total Reports</div>
-              </CardContent>
-            </Card>
-            <Card className="border-0 bg-white shadow-lg">
-              <CardContent className="p-6 text-center">
-                <div className="text-3xl font-bold text-slate-900">₹{Math.round(all.reduce((sum, r) => sum + (r.loss_amount_inr || 0), 0) / 100000)}L+</div>
-                <div className="text-sm text-slate-600">Money at Risk</div>
-              </CardContent>
-            </Card>
-            <Card className="border-0 bg-white shadow-lg">
-              <CardContent className="p-6 text-center">
-                <div className="text-3xl font-bold text-slate-900">{Math.round(all.filter(r => r.verification_status === 'evidence_backed').length / all.length * 100)}%</div>
-                <div className="text-sm text-slate-600">Verified</div>
+          <div className="flex justify-center">
+            <Card className="border-0 bg-white shadow-xl max-w-md w-full">
+              <CardContent className="p-8 text-center">
+                <div className="text-5xl font-bold text-slate-900 mb-3">{all.length}</div>
+                <div className="text-lg text-slate-600 font-medium">Total Reports</div>
+                <div className="text-sm text-slate-500 mt-2">
+                  Community incidents across India
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -167,11 +146,6 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
                           >
                             {r.category.replace('-', ' ')}
                           </Badge>
-                          {r.verification_status === 'evidence_backed' && (
-                            <Badge variant="outline" className="text-xs px-2 py-1 border-green-200 text-green-700">
-                              Verified
-                            </Badge>
-                          )}
                         </div>
                         
                         <div className="space-y-2">

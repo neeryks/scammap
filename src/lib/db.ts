@@ -1,32 +1,30 @@
 import { Low } from 'lowdb'
 import { JSONFile } from 'lowdb/node'
 import path from 'path'
-import type { Report, Venue, Indicator, Evidence, User, VerificationRecord } from './types'
+import type { Report, Venue, Indicator, Evidence, User } from './types'
 
-export type DBData = {
+interface DatabaseSchema {
   reports: Report[]
   venues: Venue[]
   indicators: Indicator[]
   evidence: Evidence[]
   users: User[]
-  verificationRecords: VerificationRecord[]
 }
 
 const file = path.join(process.cwd(), 'data', 'db.json')
-const adapter = new JSONFile<DBData>(file)
-export const db = new Low<DBData>(adapter, {
+const adapter = new JSONFile<DatabaseSchema>(file)
+export const db = new Low<DatabaseSchema>(adapter, {
   reports: [],
   venues: [],
   indicators: [],
   evidence: [],
-  users: [],
-  verificationRecords: []
+  users: []
 })
 
 export async function initDB() {
   await db.read()
   if (!db.data) {
-    db.data = { reports: [], venues: [], indicators: [], evidence: [], users: [], verificationRecords: [] }
+    db.data = { reports: [], venues: [], indicators: [], evidence: [], users: [] }
     await db.write()
   }
   return db

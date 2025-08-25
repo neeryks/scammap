@@ -1,453 +1,469 @@
-import { Report } from '@/lib/types'
+import Link from 'next/link'
+import { notFound } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { CalendarDays, CreditCard, FileText, ArrowLeft, ExternalLink, Navigation, MapPin, AlertTriangle } from 'lucide-react'
+import MapClient from './MapClient'
+import EvidenceGalleryClient from '@/components/EvidenceGalleryClient'
 
-async function getReport(id: string): Promise<Report | null> {
-  const base = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
-  const res = await fetch(`${base}/api/reports/${id}`, { cache: 'no-store' })
-  if (!res.ok) return null
-  return res.json()
+interface Report {
+  id: string
+  created_at: string
+  category: string
+  description: string
+  loss_amount_inr?: number
+  evidence_ids?: string[]
+  outcome?: string
+  city?: string
+  venue_name?: string
+  address?: string
+  payment_method?: string
+  scam_meter_score?: number
+  location?: string | {
+    lat: number
+    lon: number
+    precision_level?: string
+  }
 }
 
-export default async function IncidentDetail({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const r = await getReport(id)
-  
-  if (!r) {
-    return (
-      <div className="min-h-screen bg-white">
-        <div className="mx-auto max-w-4xl px-4 py-16">
-          <div className="text-center space-y-6">
-            <div className="text-8xl opacity-20">
-              <svg className="w-20 h-20 mx-auto" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="space-y-4">
-              <h1 className="text-3xl font-bold text-slate-900">Incident Not Found</h1>
-              <p className="text-lg text-slate-600 max-w-md mx-auto">
-                The incident you&apos;re looking for doesn&apos;t exist or has been removed from our database.
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button variant="outline" href="/incidents" className="px-8">
-                Browse All Incidents
-              </Button>
-              <Button href="/report" className="px-8">
-                Report New Incident
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
+interface Evidence {
+  id: string
+  type: string
+  storage_url: string
+  hash?: string
+  exif_removed?: boolean
+  redactions_applied?: boolean
+  pii_flags?: string[]
+  ocr_text?: string
+}
+
+async function getReport(id: string): Promise<Report | null> {
+  try {
+    console.log('Fetching report:', id)
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001'
+    const res = await fetch(`${baseUrl}/api/reports/${id}`, {
+      cache: 'no-store'
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    console.log('Report fetched successfully')
+    return data
+  } catch (error) {
+    console.error('Error fetching report:', error)
+    return null
   }
-  
+}
+
+async function getEvidence(evidenceIds: string[]): Promise<Evidence[]> {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001'
+    const evidencePromises = evidenceIds.map(async (id) => {
+      const res = await fetch(`${baseUrl}/api/evidence/${id}`, {
+        cache: 'no-store'
+      })
+      if (!res.ok) return null
+      return await res.json()
+    })
+    
+    const evidenceData = await Promise.all(evidencePromises)
+    return evidenceData.filter(Boolean) as Evidence[]
+  } catch (error) {
+    console.error('Error fetching evidence:', error)
+    return []
+  }
+}
+
+export default async function IncidentDetailsPage({
+  params
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = await params
+  console.log('Page rendering with ID:', id)
+  const report = await getReport(id)
+
+  if (!report) {
+    notFound()
+  }
+
+  // Fetch evidence data if evidence IDs exist
+  const evidenceData = report.evidence_ids && report.evidence_ids.length > 0 
+    ? await getEvidence(report.evidence_ids)
+    : []
+
+  if (!report) {
+    notFound()
+  }
+
+  const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount)
+  }
+
+  const getRiskLevel = (score?: number) => {
+    if (!score) return { level: 'Unknown', color: 'bg-gray-500', variant: 'secondary' as const }
+    if (score >= 90) return { level: 'High Risk', color: 'bg-red-500', variant: 'destructive' as const }
+    if (score >= 70) return { level: 'Medium Risk', color: 'bg-orange-500', variant: 'default' as const }
+    return { level: 'Low Risk', color: 'bg-green-500', variant: 'secondary' as const }
+  }
+
+  const riskInfo = getRiskLevel(report.scam_meter_score)
+
+  // Get location coordinates and display info
+  const getLocationInfo = () => {
+    // If location is an object with coordinates, use those coordinates
+    if (typeof report.location === 'object' && report.location && report.location.lat && report.location.lon) {
+      return {
+        coordinates: { lat: report.location.lat, lon: report.location.lon },
+        displayLocation: `${report.location.lat.toFixed(4)}, ${report.location.lon.toFixed(4)}`,
+        hasCoordinates: true,
+        showVenue: false // Don't show venue in coordinates section when we have coordinates
+      }
+    }
+    
+    // If location is a string with coordinates (lat,lon format)
+    if (typeof report.location === 'string' && report.location.includes(',')) {
+      const coords = report.location.split(',')
+      if (coords.length === 2) {
+        const lat = parseFloat(coords[0].trim())
+        const lon = parseFloat(coords[1].trim())
+        if (!isNaN(lat) && !isNaN(lon)) {
+          return {
+            coordinates: { lat, lon },
+            displayLocation: `${lat.toFixed(4)}, ${lon.toFixed(4)}`,
+            hasCoordinates: true,
+            showVenue: false
+          }
+        }
+      }
+    }
+    
+    // If no coordinates, fall back to venue name or other location info
+    const displayLocation = report.venue_name || report.city || report.address || 
+                          (typeof report.location === 'string' ? report.location : 'Unknown location')
+    
+    return {
+      coordinates: null,
+      displayLocation,
+      hasCoordinates: false,
+      showVenue: true // Show venue in location section when no coordinates
+    }
+  }
+
+  const locationInfo = getLocationInfo()
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
-      {/* Navigation Header */}
-      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-slate-200/60">
-        <div className="mx-auto max-w-7xl px-6 py-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      {/* Header */}
+      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" href="/incidents" className="h-9 px-3 hover:bg-slate-100">
-                ← Back to Incidents
-              </Button>
-              <div className="h-6 w-px bg-slate-200" />
-              <Badge variant="outline" className="capitalize font-medium">
-                {r.category.replace('-', ' ')}
+            <div className="flex items-center space-x-4">
+              <Link href="/" className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">
+                <ArrowLeft className="h-4 w-4" />
+                <span>Back to Map</span>
+              </Link>
+              <div className="h-6 w-px bg-gray-300" />
+              <Badge variant="outline" className="capitalize">
+                {report.category.replace('_', ' ')}
               </Badge>
             </div>
-            {r.verification_status === 'evidence_backed' && (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full">
-                <div className="h-2 w-2 rounded-full bg-emerald-500" />
-                <span className="text-sm font-medium text-emerald-700">Verified Report</span>
-              </div>
-            )}
           </div>
         </div>
       </div>
 
-      {/* Hero Section */}
-      <section className="bg-white border-b border-slate-100">
-        <div className="mx-auto max-w-7xl px-6 py-12">
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
-            <div className="lg:col-span-3 space-y-6">
-              <div className="space-y-3">
-                <h1 className="text-4xl font-bold text-slate-900 leading-tight">
-                  {r.venue_name || r.city || 'Incident Report'}
-                </h1>
-                {(r.city || r.address) && (
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span className="text-base">{r.address || r.city}</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-4 text-sm text-slate-500">
-                  <span>Reported {new Date(r.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-                  <div className="h-1 w-1 rounded-full bg-slate-300" />
-                  <span>Report ID: {r.id}</span>
-                </div>
-              </div>
-            </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
             
-            <div className="lg:col-span-2">
-              <Card className="border-2 border-slate-200 shadow-lg">
-                <CardContent className="p-8 text-center space-y-4">
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium text-slate-500 uppercase tracking-wide">Risk Score</div>
-                    <div className="text-6xl font-bold text-slate-900">{r.scam_meter_score}</div>
-                    <Badge 
-                      variant={r.scam_meter_score > 90 ? "destructive" : r.scam_meter_score > 80 ? "default" : "secondary"}
-                      className="text-sm px-4 py-1"
-                    >
-                      {r.scam_meter_score > 90 ? 'High Risk' : r.scam_meter_score > 80 ? 'Medium Risk' : 'Low Risk'}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Main Content */}
-      <section className="py-16">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-            
-            {/* Primary Content */}
-            <div className="lg:col-span-2 space-y-10">
-              
-              {/* Description */}
-              <Card className="border-2 border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-3 text-2xl">
-                    <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                      <svg className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </div>
-                    What Happened
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <p className="text-lg leading-relaxed text-slate-700">{r.description}</p>
-                </CardContent>
-              </Card>
-
-              {/* Impact & Loss Information */}
-              <Card className="border-2 border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-3 text-2xl">
-                    <div className="h-8 w-8 rounded-lg bg-red-100 flex items-center justify-center">
-                      <svg className="h-4 w-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                      </svg>
-                    </div>
-                    Impact & Losses
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="grid gap-4">
-                    {r.loss_amount_inr && (
-                      <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg">
-                        <span className="text-sm font-medium text-red-700">Financial Loss</span>
-                        <span className="text-lg font-bold text-red-900">₹{r.loss_amount_inr.toLocaleString()}</span>
-                      </div>
-                    )}
-                    
-                    {r.loss_type && r.loss_type !== 'financial' && (
-                      <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
-                        <span className="text-sm font-medium text-slate-700">Primary Impact</span>
-                        <span className="text-sm font-semibold text-slate-900 capitalize">
-                          {r.loss_type === 'emotional' ? 'Emotional Distress' :
-                           r.loss_type === 'time' ? 'Time Wasted' :
-                           r.loss_type === 'personal-data' ? 'Personal Data Compromised' :
-                           r.loss_type === 'harassment' ? 'Harassment/Threats' :
-                           r.loss_type === 'reputation' ? 'Reputation Damage' :
-                           r.loss_type === 'privacy' ? 'Privacy Violation' :
-                           r.loss_type === 'multiple' ? 'Multiple Types of Impact' :
-                           r.loss_type.replace('-', ' ')}
-                        </span>
-                      </div>
-                    )}
-
-                    {r.emotional_impact && (
-                      <div className="flex items-center justify-between p-4 bg-amber-50 rounded-lg">
-                        <span className="text-sm font-medium text-amber-700">Emotional Impact</span>
-                        <span className="text-sm font-semibold text-amber-900 capitalize">
-                          {r.emotional_impact.replace('-', ' ')}
-                        </span>
-                      </div>
-                    )}
-
-                    {r.time_wasted && (
-                      <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
-                        <span className="text-sm font-medium text-blue-700">Time Lost</span>
-                        <span className="text-sm font-semibold text-blue-900 capitalize">
-                          {r.time_wasted.replace('-', ' ')}
-                        </span>
-                      </div>
-                    )}
-
-                    {r.personal_data_compromised && (
-                      <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg">
-                        <span className="text-sm font-medium text-purple-700">Data Compromised</span>
-                        <span className="text-sm font-semibold text-purple-900 capitalize">
-                          {r.personal_data_compromised.replace('-', ' ')}
-                        </span>
-                      </div>
-                    )}
-
-                    {!r.loss_amount_inr && !r.loss_type && (
-                      <div className="p-4 bg-slate-50 rounded-lg text-center">
-                        <span className="text-sm text-slate-500">Impact information not specified</span>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Tactics */}
-              {r.tactic_tags && r.tactic_tags.length > 0 && (
-                <Card className="border-2 border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-4">
-                    <CardTitle className="flex items-center gap-3 text-2xl">
-                      <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center">
-                        <svg className="h-4 w-4 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                      </div>
-                      Tactics Used
+            {/* Hero Card */}
+            <Card className="border-0 shadow-lg bg-gradient-to-r from-white to-slate-50">
+              <CardHeader className="pb-4">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-3">
+                    <CardTitle className="text-3xl font-bold text-gray-900 leading-tight">
+                      {report.venue_name || report.city || 'Incident Report'}
                     </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="flex flex-wrap gap-3">
-                      {r.tactic_tags.map(tag => (
-                        <Badge key={tag} variant="secondary" className="px-4 py-2 text-sm font-medium">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Warning Indicators */}
-              {r.indicators && r.indicators.length > 0 && (
-                <Card className="border-2 border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-4">
-                    <CardTitle className="flex items-center gap-3 text-2xl">
-                      <div className="h-8 w-8 rounded-lg bg-red-100 flex items-center justify-center">
-                        <svg className="h-4 w-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
-                        </svg>
-                      </div>
-                      Warning Indicators
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {r.indicators.map(indicator => (
-                        <div key={indicator} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="h-2 w-2 rounded-full bg-red-500" />
-                          <span className="text-sm font-medium text-slate-700">
-                            {indicator.replace(/_/g, ' ')}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-            </div>
-
-            {/* Sidebar */}
-            <div className="space-y-8">
-              
-              {/* Impact Card */}
-              {((r.impact_types && r.impact_types.length > 0) || r.loss_amount_inr || r.impact_summary) && (
-                <Card className="border-2 border-slate-200 shadow-lg">
-                  <CardHeader className="pb-4">
-                    <CardTitle className="flex items-center gap-3 text-xl">
-                      <div className="h-6 w-6 rounded-lg bg-purple-100 flex items-center justify-center">
-                        <svg className="h-3 w-3 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                      </div>
-                      Impact Assessment
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    
-                    {/* Impact Types */}
-                    {r.impact_types && r.impact_types.length > 0 && (
-                      <div className="space-y-3">
-                        <h4 className="text-sm font-semibold text-slate-600 uppercase tracking-wide">Impact Types</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {r.impact_types.map(type => (
-                            <Badge key={type} variant="outline" className="capitalize text-xs">
-                              {type}
-                            </Badge>
-                          ))}
-                        </div>
+                    {(report.city || report.address) && (
+                      <div className="flex items-center text-gray-600">
+                        <MapPin className="h-4 w-4 mr-2" />
+                        <span>{report.address || report.city}</span>
                       </div>
                     )}
-
-                    {/* Impact Summary */}
-                    {r.impact_summary && (
-                      <div className="space-y-3">
-                        <h4 className="text-sm font-semibold text-slate-600 uppercase tracking-wide">Impact Summary</h4>
-                        <Alert className="border-slate-200">
-                          <AlertDescription className="text-sm leading-relaxed">
-                            {r.impact_summary}
-                          </AlertDescription>
-                        </Alert>
-                      </div>
-                    )}
-
-                    {/* Financial Loss */}
-                    {r.loss_amount_inr && (
-                      <div className="space-y-3">
-                        <h4 className="text-sm font-semibold text-slate-600 uppercase tracking-wide">Financial Impact</h4>
-                        <div className="text-center p-6 bg-gradient-to-br from-red-50 to-orange-50 rounded-xl border border-red-100">
-                          <div className="text-3xl font-bold text-red-600">
-                            ₹{r.loss_amount_inr.toLocaleString()}
-                          </div>
-                          <div className="text-sm text-red-500 mt-1">Estimated Loss</div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Payment Method */}
-                    {r.payment_method && (
-                      <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                        <span className="text-sm text-slate-600">Payment Method</span>
-                        <Badge variant="secondary" className="capitalize">
-                          {r.payment_method}
-                        </Badge>
-                      </div>
-                    )}
-
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Report Details */}
-              <Card className="border-2 border-slate-200 shadow-lg">
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-3 text-xl">
-                    <div className="h-6 w-6 rounded-lg bg-slate-100 flex items-center justify-center">
-                      <svg className="h-3 w-3 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                      </svg>
-                    </div>
-                    Report Details
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between py-2">
-                      <span className="text-sm text-slate-500">Category</span>
-                      <Badge variant="outline" className="capitalize">
-                        {r.category.replace('-', ' ')}
-                      </Badge>
-                    </div>
-                    <div className="h-px bg-slate-100" />
-                    <div className="flex items-center justify-between py-2">
-                      <span className="text-sm text-slate-500">Date Reported</span>
-                      <span className="text-sm font-medium">
-                        {new Date(r.created_at).toLocaleDateString()}
+                    <div className="flex items-center text-sm text-gray-500">
+                      <CalendarDays className="h-4 w-4 mr-2" />
+                      <span>
+                        Reported on {new Date(report.created_at).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
                       </span>
                     </div>
-                    {r.outcome && (
-                      <>
-                        <div className="h-px bg-slate-100" />
-                        <div className="flex items-center justify-between py-2">
-                          <span className="text-sm text-slate-500">Status</span>
-                          <Badge 
-                            variant={r.outcome === 'refund' ? 'default' : r.outcome === 'police_reported' ? 'secondary' : 'outline'}
-                            className="capitalize"
-                          >
-                            {r.outcome.replace('_', ' ')}
+                  </div>
+                  {report.scam_meter_score && (
+                    <div className="text-center">
+                      <div className="text-4xl font-bold text-gray-900 mb-1">
+                        {report.scam_meter_score}
+                      </div>
+                      <Badge variant={riskInfo.variant} className="text-xs">
+                        {riskInfo.level}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              </CardHeader>
+            </Card>
+
+            {/* Description */}
+            <Card className="shadow-lg border-0">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <FileText className="h-5 w-5 text-blue-600" />
+                  <span>Incident Description</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-700 leading-relaxed text-lg">
+                  {report.description}
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Financial Impact */}
+            {report.loss_amount_inr && (
+              <Card className="shadow-lg border-0 overflow-hidden">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <CreditCard className="h-5 w-5 text-red-600" />
+                    <span>Financial Impact</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="bg-gradient-to-br from-red-50 via-red-100 to-orange-50 p-8 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-red-200/30 rounded-full -translate-y-16 translate-x-16" />
+                    <div className="absolute bottom-0 left-0 w-24 h-24 bg-orange-200/30 rounded-full translate-y-12 -translate-x-12" />
+                    <div className="relative text-center">
+                      <div className="text-sm font-semibold text-red-700 uppercase tracking-wide mb-2">
+                        Total Financial Loss
+                      </div>
+                      <div className="text-6xl font-bold text-red-800 mb-3">
+                        {formatCurrency(report.loss_amount_inr)}
+                      </div>
+                      {report.payment_method && (
+                        <div className="flex items-center justify-center space-x-2 text-red-600">
+                          <span className="text-sm">Payment Method:</span>
+                          <Badge variant="outline" className="border-red-300 text-red-700">
+                            {report.payment_method}
                           </Badge>
                         </div>
-                      </>
-                    )}
-                    <div className="h-px bg-slate-100" />
-                    <div className="flex items-center justify-between py-2">
-                      <span className="text-sm text-slate-500">Verification</span>
-                      <Badge 
-                        variant={r.verification_status === 'evidence_backed' ? 'default' : 'outline'}
-                        className={r.verification_status === 'evidence_backed' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : ''}
-                      >
-                        {r.verification_status === 'evidence_backed' ? 'Evidence Backed' : 'Unverified'}
-                      </Badge>
+                      )}
                     </div>
                   </div>
                 </CardContent>
               </Card>
+            )}
 
-              {/* Evidence */}
-              <Card className="border-2 border-slate-200 shadow-lg">
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-3 text-xl">
-                    <div className="h-6 w-6 rounded-lg bg-green-100 flex items-center justify-center">
-                      <svg className="h-3 w-3 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                      </svg>
-                    </div>
-                    Evidence
+            {/* Evidence */}
+            {report.evidence_ids && report.evidence_ids.length > 0 && (
+              <Card className="shadow-lg border-0">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <FileText className="h-5 w-5 text-blue-600" />
+                    <span>Evidence & Documentation</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {r.evidence_ids && r.evidence_ids.length > 0 ? (
-                    <div className="space-y-3">
-                      {r.evidence_ids.map(eid => (
-                        <div key={eid} className="flex items-center gap-3 p-4 bg-green-50 rounded-lg border border-green-100">
-                          <div className="h-2 w-2 bg-green-500 rounded-full" />
-                          <div className="flex-1">
-                            <span className="text-sm font-medium text-green-800">
-                              Evidence Submitted
-                            </span>
-                            <div className="text-xs text-green-600 mt-1">
-                              ID: {eid.slice(0,8)}...
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <Alert>
-                      <AlertDescription className="text-sm">
-                        No public evidence available for this incident.
-                      </AlertDescription>
-                    </Alert>
-                  )}
+                  <EvidenceGalleryClient evidence={evidenceData} />
                 </CardContent>
               </Card>
+            )}
 
-              {/* Action Buttons */}
-              <div className="space-y-4">
-                <Button href="/report" className="w-full h-12 bg-slate-900 hover:bg-slate-800 text-white font-medium">
-                  Report Similar Incident
-                </Button>
-                <Button variant="outline" href="/incidents" className="w-full h-12 border-2 font-medium">
-                  Browse More Reports
-                </Button>
-              </div>
+          </div>
 
+          {/* Sidebar */}
+          <div className="space-y-6">
+            
+            {/* Status Card */}
+            <Card className="shadow-lg border-0">
+              <CardHeader>
+                <CardTitle className="text-lg">Report Status</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  {report.outcome && (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Outcome</span>
+                        <Badge variant="outline" className="capitalize">
+                          {report.outcome.replace('_', ' ')}
+                        </Badge>
+                      </div>
+                      <div className="h-px bg-gray-200" />
+                    </>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Category</span>
+                    <Badge variant="outline" className="capitalize">
+                      {report.category.replace('_', ' ')}
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Risk Assessment */}
+            {report.scam_meter_score && (
+              <Card className="shadow-lg border-0">
+                <CardHeader>
+                  <CardTitle className="text-lg">Risk Assessment</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center space-y-4">
+                    <div className={`w-24 h-24 ${riskInfo.color} rounded-full mx-auto flex items-center justify-center`}>
+                      <span className="text-3xl font-bold text-white">{report.scam_meter_score}</span>
+                    </div>
+                    <div>
+                      <div className="text-lg font-semibold text-gray-900">{riskInfo.level}</div>
+                      <div className="text-sm text-gray-600">Risk Score out of 100</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Location & Map Section */}
+            <Card className="shadow-lg border-0">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <MapPin className="h-5 w-5 text-blue-600" />
+                  Location
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  {locationInfo.hasCoordinates ? (
+                    <div>
+                      <div className="text-sm text-gray-600 mb-1">Coordinates</div>
+                      <div className="text-sm text-gray-900 font-medium font-mono">
+                        {locationInfo.displayLocation}
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="text-sm text-gray-600 mb-1">Location</div>
+                      <div className="text-sm text-gray-900 font-medium">
+                        {locationInfo.displayLocation}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Only show venue as separate section when we have coordinates */}
+                  {locationInfo.hasCoordinates && (report.venue_name || report.city) && (
+                    <>
+                      <div className="h-px bg-gray-200" />
+                      <div>
+                        <div className="text-sm text-gray-600 mb-1">Venue</div>
+                        <div className="text-sm text-gray-900">
+                          {report.venue_name || report.city}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  
+                  {report.address && (
+                    <>
+                      <div className="h-px bg-gray-200" />
+                      <div>
+                        <div className="text-sm text-gray-600 mb-1">Address</div>
+                        <div className="text-sm text-gray-900">
+                          {report.address}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  <div className="h-px bg-gray-200" />
+                  
+                  {locationInfo.hasCoordinates && locationInfo.coordinates ? (
+                    <div className="space-y-3">
+                      <div className="rounded-lg overflow-hidden shadow-md border h-48">
+                        <MapClient 
+                          lat={locationInfo.coordinates.lat} 
+                          lon={locationInfo.coordinates.lon} 
+                        />
+                      </div>
+                      <Link
+                        href={`https://www.google.com/maps?q=${locationInfo.coordinates.lat},${locationInfo.coordinates.lon}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full h-10 bg-slate-900 hover:bg-slate-800 text-white rounded-md font-medium flex items-center justify-center space-x-2 transition-colors"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        <span>Open in Google Maps</span>
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <MapPin className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500 mb-3">Precise location unavailable</p>
+                      <p className="text-xs text-gray-400 mb-3">Only general location information available</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Report Details */}
+            <Card className="shadow-lg border-0">
+              <CardHeader>
+                <CardTitle className="text-lg">Report Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div>
+                    <div className="text-sm text-gray-600 mb-1">Report ID</div>
+                    <div className="text-sm font-mono text-gray-900 bg-gray-50 p-2 rounded border">
+                      {report.id}
+                    </div>
+                  </div>
+                  <div className="h-px bg-gray-200" />
+                  <div>
+                    <div className="text-sm text-gray-600 mb-1">Date & Time</div>
+                    <div className="text-sm text-gray-900">
+                      {new Date(report.created_at).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Action Buttons */}
+            <div className="space-y-3">
+              <Link 
+                href="/report"
+                className="w-full h-12 bg-slate-900 hover:bg-slate-800 text-white rounded-md font-medium flex items-center justify-center space-x-2 transition-colors"
+              >
+                <FileText className="h-4 w-4" />
+                <span>Report Similar Incident</span>
+              </Link>
             </div>
+
           </div>
         </div>
-      </section>
+      </div>
     </div>
   )
 }

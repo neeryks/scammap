@@ -23,13 +23,7 @@ export type Category =
 
 export type PaymentMethod = 'upi' | 'card' | 'cash' | 'crypto' | 'UPI' | 'Net Banking' | 'Bank Transfer' | 'Wire Transfer' | 'Credit Card' | 'Cryptocurrency' | 'other';
 
-export type VerificationStatus =
-  | 'unverified'
-  | 'community_corroborated'
-  | 'mod_reviewed'
-  | 'evidence_backed';
-
-export type ReporterVisibility = 'anonymous' | 'alias' | 'verified';
+export type ReporterVisibility = 'anonymous' | 'alias';
 
 export interface Report {
   id: string;
@@ -59,7 +53,6 @@ export interface Report {
   evidence_ids: string[];
   indicators: string[];
   outcome?: 'refund' | 'unresolved' | 'police_reported' | 'money_lost';
-  verification_status: VerificationStatus;
   scam_meter_score: number;
   reporter_visibility: ReporterVisibility;
 }
@@ -107,14 +100,4 @@ export interface User {
   role: 'member' | 'mod' | 'partner';
   reputation_score: number;
   strikes_count: number;
-}
-
-export interface VerificationRecord {
-  id: string;
-  report_id: string;
-  type: 'mod_review' | 'user_corroboration' | 'evidence_check';
-  result: string;
-  notes?: string;
-  timestamp: string;
-  actor_id: string;
 }

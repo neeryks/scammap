@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import dynamic from 'next/dynamic'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,10 +15,15 @@ import {
 } from "@/components/ui/select"
 import { account } from '@/lib/appwrite.client'
 import { useAuth } from '@/contexts/AuthContext'
+const MapPicker = dynamic(() => import('@/components/MapPicker'), { ssr: false })
 
 interface FormData {
   venue: string
-  address: string
+  address: string // Manual address entered by user
+  geocodedAddress?: string // Address from map coordinates (geocoded)
+  lat?: number
+  lon?: number
+  precision?: 'exact' | 'block'
   scamType: string
   lossType: string
   monetaryAmount: string
@@ -26,6 +32,7 @@ interface FormData {
   personalDataCompromised: string
   description: string
   evidence?: File
+  evidenceId?: string
 }
 
 export default function ReportPage() {
@@ -34,6 +41,9 @@ export default function ReportPage() {
   const [formData, setFormData] = useState<FormData>({
     venue: "",
     address: "",
+  lat: undefined,
+  lon: undefined,
+  precision: 'exact',
     scamType: "",
     lossType: "",
     monetaryAmount: "",
@@ -44,6 +54,8 @@ export default function ReportPage() {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [uploadProgress, setUploadProgress] = useState<'idle' | 'uploading' | 'uploaded' | 'error'>('idle')
+  // Removed legacy separate geocode search – MapPicker handles search and reverse geocode
 
   // Prevent hydration mismatches
   useEffect(() => {
@@ -54,10 +66,62 @@ export default function ReportPage() {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCoordSet = (lat: number, lon: number, geocodedAddress?: string) => {
+    setFormData(prev => ({
+      ...prev,
+      lat,
+      lon,
+      precision: 'exact',
+      // Store geocoded address separately, don't overwrite manual address
+      geocodedAddress: geocodedAddress
+    }))
+  }
+
+  // Removed old debounced search effect
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (file) {
-      setFormData(prev => ({ ...prev, evidence: file }))
+    if (!file) return
+
+    // Validate file type - only images
+    if (!file.type.startsWith('image/')) {
+      setUploadProgress('error')
+      return
+    }
+
+    setFormData(prev => ({ ...prev, evidence: file }))
+    setUploadProgress('uploading')
+
+    try {
+      const uploadFormData = new FormData()
+      uploadFormData.append('file', file)
+      
+      let authHeader: Record<string,string> = {}
+      try {
+        const jwt = await account.createJWT()
+        authHeader = { Authorization: `Bearer ${jwt.jwt}` }
+      } catch (error) {
+        console.error('Failed to get session for upload')
+        setUploadProgress('error')
+        return
+      }
+
+      const response = await fetch('/api/evidence', {
+        method: 'POST',
+        headers: authHeader,
+        body: uploadFormData,
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setFormData(prev => ({ ...prev, evidenceId: result.id }))
+        setUploadProgress('uploaded')
+      } else {
+        setUploadProgress('error')
+      }
+    } catch (error) {
+      console.error('Upload error:', error)
+      setUploadProgress('error')
     }
   }
 
@@ -75,6 +139,7 @@ export default function ReportPage() {
         category: formData.scamType,
         venue_name: formData.venue,
         address: formData.address,
+  location: formData.lat && formData.lon ? { lat: formData.lat, lon: formData.lon, precision_level: formData.precision || 'exact' } : undefined,
         city: formData.address.split(',').slice(-2)[0]?.trim() || formData.address.split(',')[0]?.trim() || 'Unknown',
         description: formData.description,
         loss_type: formData.lossType || undefined,
@@ -84,7 +149,7 @@ export default function ReportPage() {
         personal_data_compromised: formData.personalDataCompromised || undefined,
         impact_types: [],
         tactic_tags: [],
-        evidence_ids: [],
+        evidence_ids: formData.evidenceId ? [formData.evidenceId] : [],
         indicators: []
       }
 
@@ -108,25 +173,35 @@ export default function ReportPage() {
         setFormData({
           venue: "",
           address: "",
+          geocodedAddress: undefined,
+          lat: undefined,
+          lon: undefined,
+          precision: 'exact',
           scamType: "",
           lossType: "",
           monetaryAmount: "",
           emotionalImpact: "",
           timeWasted: "",
           personalDataCompromised: "",
-          description: ""
+          description: "",
+          evidenceId: undefined
         })
+        setUploadProgress('idle')
       } else if (response.status === 401) {
         setSubmitStatus('error')
         window.location.href = '/auth/login?next=/report'
         return
       } else {
+        let errorMessage = 'Unknown error occurred'
         try {
           const errorData = await response.json()
           console.error('API Error:', errorData)
+          errorMessage = errorData.error || errorData.message || JSON.stringify(errorData)
         } catch {
           console.error('API Error: Non-JSON response, status:', response.status)
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`
         }
+        console.error('Full error context:', errorMessage)
         setSubmitStatus('error')
       }
     } catch (error) {
@@ -209,17 +284,66 @@ export default function ReportPage() {
                 {/* Address */}
                 <div className="space-y-2">
                   <label htmlFor="address" className="text-sm font-medium text-slate-700">
-                    Address *
+                    Specific Address *
                   </label>
                   <Input
                     id="address"
                     type="text"
                     value={formData.address}
                     onChange={(e) => handleInputChange('address', e.target.value)}
-                    placeholder="Full address including city and country"
+                    placeholder="e.g., Shop 123, ABC Mall, XYZ Road, Mumbai"
                     required
                   />
+                  <p className="text-xs text-slate-500">
+                    📝 Enter the specific address or location details as you know them. 
+                    This is independent of the map coordinates below.
+                  </p>
                 </div>
+
+                {/* Visual separator */}
+                <div className="border-t border-slate-200 my-4"></div>
+
+                {/* Interactive Map Picker (search + click + drag + reverse geocode) */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700">Map Location (Optional)</label>
+                  <p className="text-xs text-slate-500 mb-2">
+                    🗺️ Use the map to set coordinates. The address shown here is automatically determined from the coordinates and may differ from your specific address above.
+                  </p>
+                  <div className="space-y-2">
+                    <MapPicker
+                      lat={formData.lat}
+                      lon={formData.lon}
+                      address={formData.geocodedAddress}
+                      onChange={(val) => handleCoordSet(val.lat, val.lon, val.address)}
+                    />
+                    {formData.lat && formData.lon && (
+                      <div className="text-xs text-slate-600 space-y-2">
+                        <div className="flex flex-wrap gap-3">
+                          <span>Lat: {formData.lat.toFixed(5)}</span>
+                          <span>Lon: {formData.lon.toFixed(5)}</span>
+                          <span className="font-medium text-slate-700">Precision: exact</span>
+                          <button
+                            type="button"
+                            onClick={() => setFormData(prev => ({ ...prev, lat: undefined, lon: undefined, geocodedAddress: undefined }))}
+                            className="underline text-slate-500"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                        {formData.geocodedAddress && (
+                          <div className="bg-blue-50 border border-blue-200 p-3 rounded text-xs">
+                            <div className="font-medium text-blue-800 mb-1">📍 Area Address from Map:</div>
+                            <div className="text-blue-700">{formData.geocodedAddress}</div>
+                            <div className="text-blue-600 mt-1 text-xs">This is the general area address based on your selected coordinates</div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <input type="hidden" name="lat" value={formData.lat ?? ''} />
+                <input type="hidden" name="lon" value={formData.lon ?? ''} />
+                <input type="hidden" name="precision" value={formData.precision ?? 'exact'} />
 
                 {/* Scam Type */}
                 <div className="space-y-2">
@@ -403,22 +527,46 @@ export default function ReportPage() {
                       id="evidence"
                       type="file"
                       onChange={handleFileChange}
-                      accept="image/*,.pdf,.doc,.docx"
+                      accept="image/*"
                       className="hidden"
                     />
                     <label
                       htmlFor="evidence"
                       className="cursor-pointer flex flex-col items-center gap-2"
                     >
-                      <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                      </svg>
-                      <span className="text-sm text-slate-600">
-                        {formData.evidence ? formData.evidence.name : 'Upload receipts, photos, or documents'}
-                      </span>
-                      <span className="text-xs text-slate-400">
-                        PNG, JPG, PDF up to 10MB
-                      </span>
+                      {uploadProgress === 'uploading' ? (
+                        <>
+                          <div className="w-8 h-8 border-2 border-slate-600 border-t-transparent rounded-full animate-spin"></div>
+                          <span className="text-sm text-slate-600">Uploading and converting to WebP...</span>
+                        </>
+                      ) : uploadProgress === 'uploaded' ? (
+                        <>
+                          <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span className="text-sm text-green-600">Image uploaded successfully</span>
+                          <span className="text-xs text-slate-400">{formData.evidence?.name}</span>
+                        </>
+                      ) : uploadProgress === 'error' ? (
+                        <>
+                          <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          <span className="text-sm text-red-600">Upload failed. Only images allowed.</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                          </svg>
+                          <span className="text-sm text-slate-600">
+                            {formData.evidence ? formData.evidence.name : 'Upload image evidence'}
+                          </span>
+                          <span className="text-xs text-slate-400">
+                            JPG, PNG only (will be converted to WebP)
+                          </span>
+                        </>
+                      )}
                     </label>
                   </div>
                 </div>

@@ -55,7 +55,7 @@ export const ReportSchema = z.object({
   evidence_ids: z.array(z.string()).default([]),
   indicators: z.array(z.string()).default([]),
   outcome: z.enum(['refund', 'unresolved', 'police_reported', 'money_lost']).optional(),
-  reporter_visibility: z.enum(['anonymous', 'alias', 'verified']).default('anonymous'),
+  reporter_visibility: z.enum(['anonymous', 'alias']).default('anonymous'),
   reporter_user_id: z.string().optional()
 });
 
