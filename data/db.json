@@ -492,6 +492,36 @@
       "redactions_applied": true,
       "pii_flags": [],
       "ocr_text": ""
+    },
+    {
+      "id": "8bdb9b1a-7896-4495-ad93-612d1429e8a7",
+      "type": "image",
+      "storage_url": "/uploads/8bdb9b1a-7896-4495-ad93-612d1429e8a7.webp",
+      "hash": "5ed6bf7791bf2c35281046188c689107ad6259aaa0f72434a48a0f1948107360",
+      "exif_removed": true,
+      "redactions_applied": true,
+      "pii_flags": [],
+      "ocr_text": ""
+    },
+    {
+      "id": "6b1e0601-4ddf-4fcc-9c0e-d94cca7cb003",
+      "type": "image",
+      "storage_url": "/uploads/6b1e0601-4ddf-4fcc-9c0e-d94cca7cb003.webp",
+      "hash": "5ed6bf7791bf2c35281046188c689107ad6259aaa0f72434a48a0f1948107360",
+      "exif_removed": true,
+      "redactions_applied": true,
+      "pii_flags": [],
+      "ocr_text": ""
+    },
+    {
+      "id": "3782b769-1989-45e8-9962-262526d86588",
+      "type": "image",
+      "storage_url": "/uploads/3782b769-1989-45e8-9962-262526d86588.webp",
+      "hash": "dec40b46802e7541025a2b50bb7e598c7a061266f1147554a7fc797a2433e152",
+      "exif_removed": true,
+      "redactions_applied": true,
+      "pii_flags": [],
+      "ocr_text": ""
     }
   ],
   "users": [],

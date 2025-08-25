@@ -14,6 +14,8 @@ interface Report {
   city?: string
   address?: string
   scam_meter_score?: number
+  risk_score?: number
+  tactic_tags?: string[]
 }
 
 async function getRecentReports(): Promise<Report[]> {
@@ -57,28 +59,11 @@ export default async function Home() {
             {/* Enhanced Search Bar */}
             <div className="mx-auto max-w-xl relative z-50">
               <SearchBar 
-                placeholder="Search by venue, city, or scam type..."
+                placeholder="Search venues, cities, scam types..."
                 showLiveResults={true}
                 size="large"
               />
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats Section - Centered Total Reports */}
-      <div className="bg-slate-50 py-16">
-        <div className="mx-auto max-w-7xl px-4">
-          <div className="flex justify-center">
-            <Card className="border-0 bg-white shadow-xl max-w-md w-full">
-              <CardContent className="p-12 text-center">
-                <div className="text-6xl font-bold text-slate-900 mb-4">{reports.length}</div>
-                <div className="text-xl text-slate-600 font-medium">Total Reports</div>
-                <div className="text-sm text-slate-500 mt-2">
-                  Community incidents across India
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>
@@ -89,9 +74,9 @@ export default async function Home() {
           <div className="space-y-12">
             {/* Section Header */}
             <div className="text-center space-y-4">
-                        <h2 className="text-3xl font-bold text-slate-900 mb-8 text-center">
-            Recent Incident Reports
-          </h2>
+              <h2 className="text-3xl font-bold text-slate-900 mb-8 text-center">
+                Recent Incident Reports
+              </h2>
               <p className="mx-auto max-w-2xl text-lg text-slate-600">
                 Learn from community experiences. These are the latest scam reports from across India.
               </p>
@@ -103,19 +88,14 @@ export default async function Home() {
                 <Link key={report.id} href={`/incidents/${report.id}`}>
                   <Card className="group relative cursor-pointer overflow-hidden border-0 bg-white shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-2">
                     {/* Gradient overlay for high-risk incidents */}
-                    {report.scam_meter_score && report.scam_meter_score > 90 && (
+                    {(report.risk_score || report.scam_meter_score) && (report.risk_score || report.scam_meter_score)! > 90 && (
                       <div className="absolute inset-0 bg-gradient-to-br from-slate-500/5 to-slate-600/5 pointer-events-none" />
                     )}
                     
                     <CardHeader className="pb-4 relative">
                       <div className="flex items-start justify-between mb-3">
                         <Badge 
-                          variant={
-                            report.scam_meter_score && report.scam_meter_score > 90 ? "default" : 
-                            report.scam_meter_score && report.scam_meter_score > 80 ? "secondary" : 
-                            "outline"
-                          }
-                          className="text-xs font-semibold px-3 py-1"
+                          className="text-xs font-semibold px-3 py-1 bg-black text-white"
                         >
                           {formatCategory(report.category)}
                         </Badge>
@@ -131,18 +111,18 @@ export default async function Home() {
                             {report.address}
                           </div>
                         )}
-                        {report.scam_meter_score && (
-                          <div className="flex items-center gap-3 text-sm">
-                            <div className="flex items-center gap-1">
-                              <div className={`w-3 h-3 rounded-full ${
-                                report.scam_meter_score > 90 ? 'bg-slate-600' : 
-                                report.scam_meter_score > 80 ? 'bg-slate-500' : 
-                                'bg-slate-400'
-                              }`} />
-                              <span className="font-semibold text-slate-700">Risk: {report.scam_meter_score}</span>
-                            </div>
+                        <div className="flex items-center gap-3 text-sm">
+                          <div className="flex items-center gap-1">
+                            <div className={`w-3 h-3 rounded-full ${
+                              (report.risk_score || report.scam_meter_score || 0) >= 80 ? 'bg-red-500' : 
+                              (report.risk_score || report.scam_meter_score || 0) >= 60 ? 'bg-orange-500' : 
+                              (report.risk_score || report.scam_meter_score || 0) >= 40 ? 'bg-yellow-500' : 'bg-green-500'
+                            }`} />
+                            <span className="font-semibold text-slate-700">
+                              Risk: {report.risk_score || report.scam_meter_score || 0}/100
+                            </span>
                           </div>
-                        )}
+                        </div>
                       </div>
                     </CardHeader>
                     
@@ -152,12 +132,24 @@ export default async function Home() {
                           {report.description}
                         </p>
                         
+                        {report.tactic_tags && report.tactic_tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-4">
+                            {report.tactic_tags.slice(0, 2).map((tag, i) => (
+                              <Badge key={i} className="text-xs px-2 py-1 bg-black text-white">
+                                {tag}
+                              </Badge>
+                            ))}
+                            {report.tactic_tags.length > 2 && (
+                              <Badge className="text-xs px-2 py-1 bg-black text-white">
+                                +{report.tactic_tags.length - 2} more
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                        
                         <div className="flex items-center justify-between">
                           <div className="text-sm text-slate-500">
-                            Impact:
-                            <span className="ml-1 font-semibold text-slate-800">
-                              {report.loss_amount_inr ? `₹${report.loss_amount_inr.toLocaleString()}` : 'Not specified'}
-                            </span>
+                            {new Date(report.created_at).toLocaleDateString()}
                           </div>
                           <div className="flex items-center gap-1 text-slate-400 group-hover:text-slate-600 transition-colors">
                             <span className="text-xs">View details</span>
@@ -175,7 +167,7 @@ export default async function Home() {
                 Array.from({ length: 12 }, (_, i) => (
                   <Card key={i} className="border-0 bg-white shadow-lg">
                     <CardHeader className="pb-4">
-                      <Badge variant="outline" className="text-xs font-semibold px-3 py-1 w-fit">
+                      <Badge className="text-xs font-semibold px-3 py-1 w-fit bg-black text-white">
                         Loading...
                       </Badge>
                       <CardTitle className="text-lg font-bold text-slate-400">

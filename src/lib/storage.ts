@@ -54,6 +54,10 @@ export async function listReports(params: ListReportsParams = {}) {
     if (params.category) results = results.filter(r => r.category === params.category)
     if (params.city) results = results.filter(r => r.city === params.city)
     if (params.reporter_user_id) results = results.filter(r => r.reporter_user_id === params.reporter_user_id)
+    
+    // Sort by created_at in descending order (newest first)
+    results = results.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    
     const total = results.length
     const start = params.offset ?? 0
     const end = (params.limit ?? 50) + start
@@ -66,6 +70,10 @@ export async function listReports(params: ListReportsParams = {}) {
   if (params.reporter_user_id) q.push(Query.equal('reporter_user_id', params.reporter_user_id))
   if (params.limit) q.push(Query.limit(params.limit))
   if (params.offset) q.push(Query.offset(params.offset))
+  
+  // Add sorting by created_at descending (newest first)
+  q.push(Query.orderDesc('created_at'))
+  
   const res = await databases!.listDocuments(
     process.env.APPWRITE_DATABASE_ID!,
     process.env.APPWRITE_COLLECTION_REPORTS_ID!,

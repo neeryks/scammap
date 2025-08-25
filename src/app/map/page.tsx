@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Slider } from '@/components/ui/slider'
-import { Search, Filter, MapPin, TrendingUp, DollarSign, Calendar, Target } from 'lucide-react'
+import { Search, Filter, MapPin, DollarSign, Calendar } from 'lucide-react'
 
 // Map component that loads only on client side
 const MapComponent = ({ reports, onMarkerClick }: { reports: Report[]; onMarkerClick: (report: Report) => void }) => {
@@ -217,7 +217,8 @@ export default function MapPage() {
       if (filters.city !== 'all' && r.city !== filters.city) return false
 
       // Risk range
-      if (r.scam_meter_score < filters.riskRange[0] || r.scam_meter_score > filters.riskRange[1]) return false
+      const riskScore = r.risk_score || r.scam_meter_score || 0
+      if (riskScore < filters.riskRange[0] || riskScore > filters.riskRange[1]) return false
 
       // Minimum loss
       if (filters.minLoss > 0 && (r.loss_amount_inr || 0) < filters.minLoss) return false
@@ -417,12 +418,26 @@ export default function MapPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary">
+                    <Badge className="bg-black text-white">
                       {formatCategory(selectedReport.category)}
                     </Badge>
-                    <Badge variant={selectedReport.scam_meter_score > 90 ? "destructive" : "outline"}>
-                      Risk: {selectedReport.scam_meter_score}
-                    </Badge>
+                    {selectedReport.risk_score ? (
+                      <Badge className={`text-white ${
+                        selectedReport.risk_score >= 80 ? 'bg-red-600' : 
+                        selectedReport.risk_score >= 60 ? 'bg-orange-500' :
+                        selectedReport.risk_score >= 40 ? 'bg-yellow-500' : 'bg-green-500'
+                      }`}>
+                        Risk: {selectedReport.risk_score}/100
+                      </Badge>
+                    ) : selectedReport.scam_meter_score ? (
+                      <Badge className={`text-white ${
+                        selectedReport.scam_meter_score >= 80 ? 'bg-red-600' : 
+                        selectedReport.scam_meter_score >= 60 ? 'bg-orange-500' :
+                        selectedReport.scam_meter_score >= 40 ? 'bg-yellow-500' : 'bg-green-500'
+                      }`}>
+                        Risk: {selectedReport.scam_meter_score}/100
+                      </Badge>
+                    ) : null}
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -459,18 +474,6 @@ export default function MapPage() {
                       </h4>
                       <p className="text-sm text-slate-600">
                         {new Date(selectedReport.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-
-                    <div>
-                      <h4 className="font-medium text-sm flex items-center gap-1 mb-1">
-                        <Target className="h-4 w-4" />
-                        Risk Assessment
-                      </h4>
-                      <p className="text-sm text-slate-600">
-                        {selectedReport.scam_meter_score > 90 ? 'Very High Risk' :
-                         selectedReport.scam_meter_score > 80 ? 'High Risk' :
-                         selectedReport.scam_meter_score > 60 ? 'Medium Risk' : 'Low Risk'}
                       </p>
                     </div>
                   </div>

@@ -6,8 +6,8 @@ export async function processImage(buffer: Buffer, options?: { blur?: boolean })
   if (options?.blur) {
     img = img.blur(8)
   }
-  // Re-encode to WebP to strip metadata and compress better
-  const output = await img.webp({ quality: 85, effort: 4 }).toBuffer()
+  // Re-encode to WebP with maximum quality to preserve original resolution
+  const output = await img.webp({ quality: 100, effort: 6, lossless: true }).toBuffer()
   return output
 }
 

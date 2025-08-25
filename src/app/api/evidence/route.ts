@@ -38,12 +38,13 @@ export async function POST(req: NextRequest) {
   const arrayBuffer = await file.arrayBuffer()
   const buffer = Buffer.from(arrayBuffer)
 
-  // Convert to WebP preserving original resolution
+  // Convert to WebP preserving original resolution and maximum quality
   const webpBuffer = await sharp(buffer)
     .webp({ quality: 100, effort: 6, lossless: true })
     .toBuffer()
 
-  const processed = await processImage(webpBuffer, { blur: true })
+  // Process without additional compression to maintain quality
+  const processed = await processImage(webpBuffer, { blur: false })
   const hash = crypto.createHash('sha256').update(processed).digest('hex')
   const useAppwrite = process.env.APPWRITE_ENABLED === 'true'
   

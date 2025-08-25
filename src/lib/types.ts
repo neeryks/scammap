@@ -55,6 +55,17 @@ export interface Report {
   outcome?: 'refund' | 'unresolved' | 'police_reported' | 'money_lost';
   scam_meter_score: number;
   reporter_visibility: ReporterVisibility;
+  
+  // Risk Score Fields
+  risk_score?: number;
+  risk_components?: {
+    category: number;
+    proximity: number;
+    recency: number;
+    financial: number;
+    volume: number;
+  };
+  risk_updated_at?: string;
 }
 
 export interface Evidence {

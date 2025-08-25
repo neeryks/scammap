@@ -2,29 +2,11 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { CalendarDays, CreditCard, FileText, ArrowLeft, ExternalLink, Navigation, MapPin, AlertTriangle } from 'lucide-react'
+import { CalendarDays, CreditCard, FileText, ArrowLeft, ExternalLink, MapPin } from 'lucide-react'
 import MapClient from './MapClient'
 import EvidenceGalleryClient from '@/components/EvidenceGalleryClient'
-
-interface Report {
-  id: string
-  created_at: string
-  category: string
-  description: string
-  loss_amount_inr?: number
-  evidence_ids?: string[]
-  outcome?: string
-  city?: string
-  venue_name?: string
-  address?: string
-  payment_method?: string
-  scam_meter_score?: number
-  location?: string | {
-    lat: number
-    lon: number
-    precision_level?: string
-  }
-}
+import { calculateRiskScore, findNearbyIncidents } from '@/lib/risk'
+import type { Report } from '@/lib/types'
 
 interface Evidence {
   id: string
@@ -51,6 +33,21 @@ async function getReport(id: string): Promise<Report | null> {
   } catch (error) {
     console.error('Error fetching report:', error)
     return null
+  }
+}
+
+async function getAllReports(): Promise<Report[]> {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001'
+    const res = await fetch(`${baseUrl}/api/reports?limit=1000`, {
+      cache: 'no-store'
+    })
+    if (!res.ok) return []
+    const data = await res.json()
+    return Array.isArray(data) ? data : data.items || []
+  } catch (error) {
+    console.error('Error fetching all reports:', error)
+    return []
   }
 }
 
@@ -91,8 +88,33 @@ export default async function IncidentDetailsPage({
     ? await getEvidence(report.evidence_ids)
     : []
 
-  if (!report) {
-    notFound()
+  // Get all reports for risk calculation
+  const allReports = await getAllReports()
+  
+  // Calculate risk score if not already present
+  let riskData = null
+  if (report.risk_score !== undefined && report.risk_components) {
+    riskData = {
+      score: report.risk_score,
+      components: report.risk_components,
+      level: (report.risk_score >= 80 ? 'critical' :
+             report.risk_score >= 60 ? 'high' :
+             report.risk_score >= 40 ? 'medium' : 'low') as 'critical' | 'high' | 'medium' | 'low',
+      insights: []
+    }
+  } else {
+    // Calculate risk score with proper type conversion
+    const convertedReport: Report = {
+      ...report,
+      category: report.category as any, // Type conversion needed
+      tactic_tags: [],
+      evidence_ids: report.evidence_ids || [],
+      indicators: [],
+      scam_meter_score: report.scam_meter_score || 0,
+      reporter_visibility: 'anonymous'
+    }
+    const nearbyIncidents = findNearbyIncidents(convertedReport, allReports)
+    riskData = calculateRiskScore(convertedReport, nearbyIncidents)
   }
 
   const formatCurrency = (amount: number): string => {
@@ -168,8 +190,8 @@ export default async function IncidentDetailsPage({
                 <span>Back to Map</span>
               </Link>
               <div className="h-6 w-px bg-gray-300" />
-              <Badge variant="outline" className="capitalize">
-                {report.category.replace('_', ' ')}
+              <Badge variant="outline" className="capitalize bg-black text-white border-black">
+                {report.category.replace('_', ' ').replace('-', ' ')}
               </Badge>
             </div>
           </div>
@@ -207,14 +229,27 @@ export default async function IncidentDetailsPage({
                       </span>
                     </div>
                   </div>
-                  {report.scam_meter_score && (
+                  {(riskData || report.scam_meter_score) && (
                     <div className="text-center">
-                      <div className="text-4xl font-bold text-gray-900 mb-1">
-                        {report.scam_meter_score}
-                      </div>
-                      <Badge variant={riskInfo.variant} className="text-xs">
-                        {riskInfo.level}
-                      </Badge>
+                      {riskData ? (
+                        <>
+                          <div className="text-4xl font-bold text-gray-900 mb-1">
+                            {riskData.score}
+                          </div>
+                          <Badge className="text-xs bg-black text-white">
+                            {riskData.level.charAt(0).toUpperCase() + riskData.level.slice(1)} Risk
+                          </Badge>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-4xl font-bold text-gray-900 mb-1">
+                            {report.scam_meter_score}
+                          </div>
+                          <Badge className="text-xs bg-black text-white">
+                            {riskInfo.level}
+                          </Badge>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -301,7 +336,7 @@ export default async function IncidentDetailsPage({
                     <>
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-600">Outcome</span>
-                        <Badge variant="outline" className="capitalize">
+                        <Badge className="capitalize bg-black text-white">
                           {report.outcome.replace('_', ' ')}
                         </Badge>
                       </div>
@@ -310,33 +345,13 @@ export default async function IncidentDetailsPage({
                   )}
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Category</span>
-                    <Badge variant="outline" className="capitalize">
-                      {report.category.replace('_', ' ')}
+                    <Badge className="capitalize bg-black text-white">
+                      {report.category.replace('_', ' ').replace('-', ' ')}
                     </Badge>
                   </div>
                 </div>
               </CardContent>
             </Card>
-
-            {/* Risk Assessment */}
-            {report.scam_meter_score && (
-              <Card className="shadow-lg border-0">
-                <CardHeader>
-                  <CardTitle className="text-lg">Risk Assessment</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center space-y-4">
-                    <div className={`w-24 h-24 ${riskInfo.color} rounded-full mx-auto flex items-center justify-center`}>
-                      <span className="text-3xl font-bold text-white">{report.scam_meter_score}</span>
-                    </div>
-                    <div>
-                      <div className="text-lg font-semibold text-gray-900">{riskInfo.level}</div>
-                      <div className="text-sm text-gray-600">Risk Score out of 100</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
 
             {/* Location & Map Section */}
             <Card className="shadow-lg border-0">

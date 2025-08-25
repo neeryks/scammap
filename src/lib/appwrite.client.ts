@@ -1,4 +1,4 @@
-import { Client, Account, ID } from 'appwrite'
+import { Client, Account, ID, OAuthProvider } from 'appwrite'
 
 let accountInstance: Account | null = null
 
@@ -13,4 +13,4 @@ function ensureClient(): Account {
 }
 
 export const account = ensureClient()
-export { ID }
+export { ID, OAuthProvider }

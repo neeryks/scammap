@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { listReports, createReport } from '@/lib/storage'
 import { ReportSchema } from '@/lib/schemas'
 import { validateAppwriteJWT } from '@/lib/appwriteAuth'
+import { calculateRiskScore, findNearbyIncidents } from '@/lib/risk'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -20,7 +21,33 @@ export async function GET(req: NextRequest) {
     }
   }
   const { items, total } = await listReports({ category, city, limit, offset, ...(authUserId ? { reporter_user_id: authUserId } : {}) })
-  return NextResponse.json({ total, items, limit: limit ?? 50, offset: offset ?? 0 })
+  
+  // Calculate risk scores for items that don't have them
+  try {
+    const { items: allReports } = await listReports({ limit: 1000 })
+    const itemsWithRisk = items.map(report => {
+      if (report.risk_score !== undefined) {
+        return report // Already has risk score
+      }
+      try {
+        const nearbyIncidents = findNearbyIncidents(report, allReports)
+        const riskData = calculateRiskScore(report, nearbyIncidents)
+        return {
+          ...report,
+          risk_score: riskData.score,
+          risk_components: riskData.components
+        }
+      } catch (error) {
+        console.error(`Error calculating risk for report ${report.id}:`, error)
+        return report // Return original if calculation fails
+      }
+    })
+    
+    return NextResponse.json({ total, items: itemsWithRisk, limit: limit ?? 50, offset: offset ?? 0 })
+  } catch (error) {
+    console.error('Error in risk calculation batch:', error)
+    return NextResponse.json({ total, items, limit: limit ?? 50, offset: offset ?? 0 })
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -69,6 +96,33 @@ export async function POST(req: NextRequest) {
   // Auth guaranteed now
   const reporter_visibility = 'anonymous'
   const reporter_user_id = undefined
+  
+  // Create the report first
   const { report, scoring } = await createReport({ ...input, reporter_visibility, reporter_user_id })
-  return NextResponse.json({ report, scoring })
+  
+  // Calculate risk score for the new report
+  try {
+    // Get all reports for risk calculation context
+    const { items: allReports } = await listReports({ limit: 1000 })
+    const nearbyIncidents = findNearbyIncidents(report, allReports)
+    const riskData = calculateRiskScore(report, nearbyIncidents)
+    
+    // Update the report with risk score (you may need to implement updateReport function)
+    console.log(`Calculated risk score for report ${report.id}: ${riskData.score}`)
+    
+    return NextResponse.json({ 
+      report: {
+        ...report,
+        risk_score: riskData.score,
+        risk_components: riskData.components,
+        risk_updated_at: new Date().toISOString()
+      }, 
+      scoring,
+      risk_data: riskData
+    })
+  } catch (error) {
+    console.error('Error calculating risk score:', error)
+    // Still return the report even if risk calculation fails
+    return NextResponse.json({ report, scoring })
+  }
 }
