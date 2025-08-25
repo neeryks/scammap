@@ -67,8 +67,8 @@ export async function POST(req: NextRequest) {
   }
   const input = parsed.data
   // Auth guaranteed now
-  let reporter_visibility: 'anonymous' | 'alias' | 'verified' | undefined = 'verified'
-  let reporter_user_id: string | undefined = verified.userId
+  const reporter_visibility = 'anonymous'
+  const reporter_user_id = undefined
   const { report, scoring } = await createReport({ ...input, reporter_visibility, reporter_user_id })
   return NextResponse.json({ report, scoring })
 }

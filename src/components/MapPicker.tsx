@@ -23,9 +23,9 @@ export interface MapPickerProps {
 
 // Map component that loads only on client side
 const LeafletMapPicker = ({ lat, lon, address, onChange, height = 320 }: { lat?: number; lon?: number; address?: string; onChange?: (val: { lat: number; lon: number; address?: string; city?: string }) => void; height?: number }) => {
-  const mapRef = useRef<any>(null)
+  const mapRef = useRef<L.Map | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const markerRef = useRef<any>(null)
+  const markerRef = useRef<L.Marker | null>(null)
   const mapIdRef = useRef<string>(`map-${Math.random().toString(36).substr(2, 9)}`)
 
   useEffect(() => {
@@ -85,7 +85,9 @@ const LeafletMapPicker = ({ lat, lon, address, onChange, height = 320 }: { lat?:
         // Handle map click
         mapRef.current.on('click', async (e: any) => {
           const { lat: newLat, lng: newLon } = e.latlng
-          markerRef.current.setLatLng([newLat, newLon])
+          if (markerRef.current) {
+            markerRef.current.setLatLng([newLat, newLon])
+          }
           await reverseGeocode(newLat, newLon)
         })
         

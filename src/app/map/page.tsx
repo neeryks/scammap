@@ -14,9 +14,9 @@ import { Search, Filter, MapPin, TrendingUp, DollarSign, Calendar, Target } from
 
 // Map component that loads only on client side
 const MapComponent = ({ reports, onMarkerClick }: { reports: Report[]; onMarkerClick: (report: Report) => void }) => {
-  const mapRef = useRef<any>(null)
+  const mapRef = useRef<L.Map | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const markersRef = useRef<any[]>([])
+  const markersRef = useRef<L.Marker[]>([])
   const mapIdRef = useRef<string>(`map-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`)
 
   useEffect(() => {
@@ -36,7 +36,7 @@ const MapComponent = ({ reports, onMarkerClick }: { reports: Report[]; onMarkerC
       if (!containerRef.current || mapRef.current) return // Double-check before proceeding
       
       // Fix Leaflet default markers
-      delete (L.Icon.Default.prototype as any)._getIconUrl
+      delete (L.Icon.Default.prototype as L.Icon.Default & { _getIconUrl?: unknown })._getIconUrl
       L.Icon.Default.mergeOptions({
         iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
         iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
@@ -69,7 +69,7 @@ const MapComponent = ({ reports, onMarkerClick }: { reports: Report[]; onMarkerC
           if (marker && typeof marker.remove === 'function') {
             marker.remove()
           }
-        } catch (e) {
+        } catch {
           // Silently ignore cleanup errors
         }
       })
@@ -81,7 +81,7 @@ const MapComponent = ({ reports, onMarkerClick }: { reports: Report[]; onMarkerC
           if (typeof mapRef.current.remove === 'function') {
             mapRef.current.remove()
           }
-        } catch (e) {
+        } catch {
           // Silently ignore cleanup errors
         }
         mapRef.current = null
@@ -198,33 +198,33 @@ export default function MapPage() {
 
   // Filter reports based on filters
   useEffect(() => {
-    let filtered = reports.filter(report => {
+    const filtered = reports.filter(r => {
       // Search query
       if (filters.searchQuery) {
         const query = filters.searchQuery.toLowerCase()
         const matchesSearch = 
-          (report.venue_name || '').toLowerCase().includes(query) ||
-          (report.city || '').toLowerCase().includes(query) ||
-          (report.address || '').toLowerCase().includes(query) ||
-          (report.description || '').toLowerCase().includes(query)
+          (r.venue_name || '').toLowerCase().includes(query) ||
+          (r.city || '').toLowerCase().includes(query) ||
+          (r.address || '').toLowerCase().includes(query) ||
+          (r.description || '').toLowerCase().includes(query)
         if (!matchesSearch) return false
       }
 
       // Category filter
-      if (filters.category !== 'all' && report.category !== filters.category) return false
+      if (filters.category !== 'all' && r.category !== filters.category) return false
 
       // City filter
-      if (filters.city !== 'all' && report.city !== filters.city) return false
+      if (filters.city !== 'all' && r.city !== filters.city) return false
 
       // Risk range
-      if (report.scam_meter_score < filters.riskRange[0] || report.scam_meter_score > filters.riskRange[1]) return false
+      if (r.scam_meter_score < filters.riskRange[0] || r.scam_meter_score > filters.riskRange[1]) return false
 
       // Minimum loss
-      if (filters.minLoss > 0 && (report.loss_amount_inr || 0) < filters.minLoss) return false
+      if (filters.minLoss > 0 && (r.loss_amount_inr || 0) < filters.minLoss) return false
 
       // Date range
       if (filters.dateRange !== 'all') {
-        const reportDate = new Date(report.created_at)
+        const reportDate = new Date(r.created_at)
         const now = new Date()
         const daysAgo = Math.floor((now.getTime() - reportDate.getTime()) / (1000 * 60 * 60 * 24))
         
