@@ -130,3 +130,13 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Ensure Leaflet maps respect container z-index */
+.leaflet-container {
+  z-index: 1 !important;
+}
+
+/* Leaflet controls should stay within reasonable z-index */
+.leaflet-control-container {
+  z-index: 5 !important;
+}

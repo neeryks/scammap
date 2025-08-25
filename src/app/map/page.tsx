@@ -17,12 +17,24 @@ const MapComponent = ({ reports, onMarkerClick }: { reports: Report[]; onMarkerC
   const mapRef = useRef<any>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const markersRef = useRef<any[]>([])
+  const mapIdRef = useRef<string>(`map-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`)
 
   useEffect(() => {
     if (typeof window === 'undefined' || mapRef.current || !containerRef.current) return
 
+    // Simple container preparation
+    const container = containerRef.current
+    container.id = mapIdRef.current
+    
+    // Only clear if there are obvious signs of previous initialization
+    if (container.children.length > 0) {
+      container.innerHTML = ''
+    }
+
     // Dynamic import of Leaflet
     import('leaflet').then((L) => {
+      if (!containerRef.current || mapRef.current) return // Double-check before proceeding
+      
       // Fix Leaflet default markers
       delete (L.Icon.Default.prototype as any)._getIconUrl
       L.Icon.Default.mergeOptions({
@@ -31,18 +43,58 @@ const MapComponent = ({ reports, onMarkerClick }: { reports: Report[]; onMarkerC
         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
       })
 
-      mapRef.current = L.map(containerRef.current!).setView([20.5937, 78.9629], 5)
-      
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 18,
-      }).addTo(mapRef.current)
+      try {
+        mapRef.current = L.map(containerRef.current!, {
+          preferCanvas: false,
+          attributionControl: true,
+          zoomControl: true
+        }).setView([20.5937, 78.9629], 5)
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors',
+          maxZoom: 18,
+        }).addTo(mapRef.current)
+        
+      } catch (error) {
+        console.warn('Map initialization failed:', error)
+        // Don't retry aggressively, just log the error
+        return
+      }
     })
 
     return () => {
+      // Clean up markers first - be gentle with Leaflet objects
+      markersRef.current.forEach(marker => {
+        try {
+          if (marker && typeof marker.remove === 'function') {
+            marker.remove()
+          }
+        } catch (e) {
+          // Silently ignore cleanup errors
+        }
+      })
+      markersRef.current = []
+      
+      // Clean up map - let Leaflet handle its own cleanup
       if (mapRef.current) {
-        mapRef.current.remove()
+        try {
+          if (typeof mapRef.current.remove === 'function') {
+            mapRef.current.remove()
+          }
+        } catch (e) {
+          // Silently ignore cleanup errors
+        }
         mapRef.current = null
+      }
+      
+      // Minimal container cleanup - don't touch Leaflet's internal properties during cleanup
+      if (containerRef.current) {
+        // Only clear HTML content, let Leaflet manage its own properties
+        setTimeout(() => {
+          if (containerRef.current) {
+            containerRef.current.innerHTML = ''
+          }
+        }, 100) // Small delay to let Leaflet finish its cleanup
       }
     }
   }, [])
@@ -104,7 +156,7 @@ const MapComponent = ({ reports, onMarkerClick }: { reports: Report[]; onMarkerC
     }
   }
 
-  return <div ref={containerRef} className="absolute inset-0 rounded-lg overflow-hidden" />
+  return <div ref={containerRef} className="absolute inset-0 rounded-lg overflow-hidden z-10" />
 }
 
 interface Filters {

@@ -1,8 +1,8 @@
 "use client"
 
 import { useEffect, useRef, useState } from 'react'
-import maplibregl, { Map as MapLibreMap, Marker } from 'maplibre-gl'
-import 'maplibre-gl/dist/maplibre-gl.css'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 type GeocodeItem = {
   label: string
@@ -16,98 +16,159 @@ export interface MapPickerProps {
   lat?: number
   lon?: number
   address?: string
-  // onChange returns selected point (lat/lon) plus optional address/city from reverse geocode
   onChange?: (val: { lat: number; lon: number; address?: string; city?: string }) => void
   className?: string
   height?: number
 }
 
-// Minimal raster style using OpenStreetMap tiles
-const osmRasterStyle: any = {
-  version: 8,
-  sources: {
-    osm: {
-      type: 'raster',
-      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-      tileSize: 256,
-      attribution: '© OpenStreetMap contributors',
-    },
-  },
-  layers: [
-    {
-      id: 'osm-tiles',
-      type: 'raster',
-      source: 'osm',
-      minzoom: 0,
-      maxzoom: 19,
-    },
-  ],
+// Map component that loads only on client side
+const LeafletMapPicker = ({ lat, lon, address, onChange, height = 320 }: { lat?: number; lon?: number; address?: string; onChange?: (val: { lat: number; lon: number; address?: string; city?: string }) => void; height?: number }) => {
+  const mapRef = useRef<any>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const markerRef = useRef<any>(null)
+  const mapIdRef = useRef<string>(`map-${Math.random().toString(36).substr(2, 9)}`)
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || mapRef.current || !containerRef.current) return
+
+    // Simple container preparation
+    const container = containerRef.current
+    container.id = mapIdRef.current
+    
+    // Only clear if there are obvious signs of previous initialization
+    if (container.children.length > 0) {
+      container.innerHTML = ''
+    }
+
+    // Dynamic import of Leaflet
+    import('leaflet').then((L) => {
+      if (!containerRef.current || mapRef.current) return // Double-check before proceeding
+      // Fix Leaflet default markers
+      delete (L.Icon.Default.prototype as any)._getIconUrl
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+      })
+
+      const initialLat = lat ?? 28.6139 // Delhi default
+      const initialLon = lon ?? 77.209
+
+      try {
+        mapRef.current = L.map(containerRef.current!).setView([initialLat, initialLon], lat && lon ? 14 : 5)
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors',
+          maxZoom: 18,
+        }).addTo(mapRef.current)
+
+        // Create draggable marker
+        markerRef.current = L.marker([initialLat, initialLon], { 
+          draggable: true,
+          icon: L.icon({
+            iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+            iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+          })
+        }).addTo(mapRef.current)
+
+        // Handle marker drag
+        markerRef.current.on('dragend', async (e: any) => {
+          const { lat: newLat, lng: newLon } = e.target.getLatLng()
+          await reverseGeocode(newLat, newLon)
+        })
+
+        // Handle map click
+        mapRef.current.on('click', async (e: any) => {
+          const { lat: newLat, lng: newLon } = e.latlng
+          markerRef.current.setLatLng([newLat, newLon])
+          await reverseGeocode(newLat, newLon)
+        })
+        
+      } catch (error) {
+        console.warn('MapPicker initialization failed:', error)
+        return
+      }
+    })
+
+    return () => {
+      // Clean up marker gently
+      if (markerRef.current) {
+        try {
+          if (typeof markerRef.current.remove === 'function') {
+            markerRef.current.remove()
+          }
+        } catch (e) {
+          // Silently ignore cleanup errors
+        }
+        markerRef.current = null
+      }
+      
+      // Clean up map gently
+      if (mapRef.current) {
+        try {
+          if (typeof mapRef.current.remove === 'function') {
+            mapRef.current.remove()
+          }
+        } catch (e) {
+          // Silently ignore cleanup errors
+        }
+        mapRef.current = null
+      }
+      
+      // Minimal container cleanup with delay
+      if (containerRef.current) {
+        setTimeout(() => {
+          if (containerRef.current) {
+            containerRef.current.innerHTML = ''
+          }
+        }, 100)
+      }
+    }
+  }, [])
+
+  // Update marker position when lat/lon props change
+  useEffect(() => {
+    if (!mapRef.current || !markerRef.current) return
+    if (typeof lat === 'number' && typeof lon === 'number') {
+      markerRef.current.setLatLng([lat, lon])
+      mapRef.current.setView([lat, lon], 14)
+    }
+  }, [lat, lon])
+
+  const reverseGeocode = async (newLat: number, newLon: number) => {
+    try {
+      const resp = await fetch(`/api/geocode?lat=${newLat}&lon=${newLon}`)
+      if (resp.ok) {
+        const data = await resp.json()
+        onChange?.({ lat: newLat, lon: newLon, address: data.address || data.label, city: data.city })
+      } else {
+        onChange?.({ lat: newLat, lon: newLon })
+      }
+    } catch {
+      onChange?.({ lat: newLat, lon: newLon })
+    }
+  }
+
+  return <div ref={containerRef} style={{ height }} className="w-full rounded-md overflow-hidden border border-slate-200 z-10" />
 }
 
 export default function MapPicker({ lat, lon, address, onChange, className, height = 320 }: MapPickerProps) {
-  const mapContainerRef = useRef<HTMLDivElement | null>(null)
-  const mapRef = useRef<MapLibreMap | null>(null)
-  const markerRef = useRef<Marker | null>(null)
-  const [center, setCenter] = useState<{ lat: number; lon: number }>(() => ({
-    lat: lat ?? 28.6139, // Delhi default
-    lon: lon ?? 77.209,
-  }))
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState(false)
   const [results, setResults] = useState<GeocodeItem[]>([])
 
-  // Initialize map
-  useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return
-    const map = new maplibregl.Map({
-      container: mapContainerRef.current,
-      style: osmRasterStyle,
-      center: [center.lon, center.lat],
-      zoom: lat && lon ? 14 : 4,
-      attributionControl: false,
-    })
-    mapRef.current = map
-    map.addControl(new maplibregl.AttributionControl({ compact: true }))
-
-  const marker = new maplibregl.Marker({ draggable: true, color: '#dc2626' })
-      .setLngLat([center.lon, center.lat])
-      .addTo(map)
-    markerRef.current = marker
-
-    const handleDragEnd = async () => {
-      const lngLat = marker.getLngLat()
-      const { lat: newLat, lng: newLon } = { lat: lngLat.lat, lng: lngLat.lng }
-      await reverseGeocode(newLat, newLon)
-    }
-    marker.on('dragend', handleDragEnd)
-
-    const handleClick = async (e: any) => {
-      const [newLon, newLat] = [e.lngLat.lng, e.lngLat.lat]
-      marker.setLngLat([newLon, newLat])
-      await reverseGeocode(newLat, newLon)
-    }
-    map.on('click', handleClick)
-
-    return () => {
-      marker.remove()
-      map.remove()
-      markerRef.current = null
-      mapRef.current = null
-    }
-  }, [])
-
-  // External updates of lat/lon
-  useEffect(() => {
-    if (!mapRef.current || !markerRef.current) return
-    if (typeof lat === 'number' && typeof lon === 'number') {
-      markerRef.current.setLngLat([lon, lat])
-      mapRef.current.setCenter([lon, lat])
-    }
-  }, [lat, lon])
-
   // Debounced search
   useEffect(() => {
-    if (!search.trim()) { setResults([]); return }
+    if (!search.trim()) { 
+      setResults([])
+      setOpen(false)
+      return 
+    }
     const id = setTimeout(async () => {
       try {
         const resp = await fetch(`/api/geocode?q=${encodeURIComponent(search)}`)
@@ -125,25 +186,7 @@ export default function MapPicker({ lat, lon, address, onChange, className, heig
     return () => clearTimeout(id)
   }, [search])
 
-  const reverseGeocode = async (newLat: number, newLon: number) => {
-    setCenter({ lat: newLat, lon: newLon })
-    try {
-      const resp = await fetch(`/api/geocode?lat=${newLat}&lon=${newLon}`)
-      if (resp.ok) {
-        const data = await resp.json()
-        onChange?.({ lat: newLat, lon: newLon, address: data.address || data.label, city: data.city })
-      } else {
-        onChange?.({ lat: newLat, lon: newLon })
-      }
-    } catch {
-      onChange?.({ lat: newLat, lon: newLon })
-    }
-  }
-
   const selectResult = (item: GeocodeItem) => {
-    if (!mapRef.current || !markerRef.current) return
-    markerRef.current.setLngLat([item.lon, item.lat])
-    mapRef.current.easeTo({ center: [item.lon, item.lat], zoom: 15 })
     onChange?.({ lat: item.lat, lon: item.lon, address: item.address || item.label, city: item.city })
     setSearch(item.label)
     setOpen(false)
@@ -154,40 +197,38 @@ export default function MapPicker({ lat, lon, address, onChange, className, heig
     navigator.geolocation.getCurrentPosition(async (pos) => {
       const newLat = pos.coords.latitude
       const newLon = pos.coords.longitude
-      if (mapRef.current && markerRef.current) {
-        markerRef.current.setLngLat([newLon, newLat])
-        mapRef.current.easeTo({ center: [newLon, newLat], zoom: 15 })
-      }
-      await reverseGeocode(newLat, newLon)
+      onChange?.({ lat: newLat, lon: newLon })
     })
   }
 
   return (
     <div className={className}>
       <div className="flex gap-2 items-center mb-2">
-        <input
+        <Input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={address || 'Search for a place, address…'}
-          className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-950"
+          className="flex-1"
         />
-        <button
+        <Button
           type="button"
           onClick={useMyLocation}
-          className="h-10 shrink-0 rounded-md border border-slate-200 px-3 text-sm hover:bg-slate-50"
-          title="Use my location"
+          variant="outline"
+          size="sm"
+          className="shrink-0"
         >
           📍
-        </button>
+        </Button>
       </div>
+      
       {open && results.length > 0 && (
-        <div className="z-20 mb-2 max-h-56 overflow-auto rounded-md border border-slate-200 bg-white shadow">
+        <div className="relative z-20 mb-2 max-h-56 overflow-auto rounded-md border border-slate-200 bg-white shadow-lg">
           {results.map((r, idx) => (
             <button
               key={`${r.lat}-${r.lon}-${idx}`}
               type="button"
-              className="block w-full text-left px-3 py-2 text-sm hover:bg-slate-50"
+              className="block w-full text-left px-3 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-b-0"
               onClick={() => selectResult(r)}
             >
               {r.label}
@@ -195,8 +236,20 @@ export default function MapPicker({ lat, lon, address, onChange, className, heig
           ))}
         </div>
       )}
-      <div ref={mapContainerRef} style={{ height }} className="w-full rounded-md overflow-hidden border border-slate-200" />
-      <div className="mt-2 text-xs text-slate-500">Map data © OpenStreetMap contributors</div>
+      
+      {typeof window !== 'undefined' && (
+        <LeafletMapPicker 
+          lat={lat} 
+          lon={lon} 
+          address={address} 
+          onChange={onChange} 
+          height={height}
+        />
+      )}
+      
+      <div className="mt-2 text-xs text-slate-500">
+        Click on the map or drag the marker to set location. Map data © OpenStreetMap contributors
+      </div>
     </div>
   )
 }
