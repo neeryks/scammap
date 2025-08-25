@@ -1,11 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Enable experimental features for better performance
-  experimental: {
-    optimizeCss: true,
-    optimizeServerReact: true,
-  },
-  
   // Optimize images
   images: {
     formats: ['image/webp', 'image/avif'],
@@ -16,9 +10,6 @@ const nextConfig = {
   
   // Enable compression
   compress: true,
-  
-  // Performance optimizations
-  swcMinify: true,
   
   // Security headers
   async headers() {
@@ -47,9 +38,6 @@ const nextConfig = {
   env: {
     CUSTOM_KEY: process.env.CUSTOM_KEY,
   },
-  
-  // Output standalone for better deployment
-  output: 'standalone',
 }
 
 module.exports = nextConfig
