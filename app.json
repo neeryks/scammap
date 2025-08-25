@@ -1,0 +1,64 @@
+{
+  "name": "ScamMapper",
+  "description": "Community-powered platform to report and track dating scams, venue traps, and restaurant overcharging across India",
+  "keywords": ["nextjs", "scam-reporting", "community", "safety", "mapping"],
+  "website": "https://github.com/neeryks/scammap",
+  "repository": "https://github.com/neeryks/scammap",
+  "logo": "https://via.placeholder.com/150x150.png?text=SM",
+  "success_url": "/",
+  "scripts": {
+    "postdeploy": "echo 'Deployment completed successfully'"
+  },
+  "env": {
+    "NEXT_PUBLIC_BASE_URL": {
+      "description": "The base URL of your Heroku app",
+      "value": "https://your-app-name.herokuapp.com"
+    },
+    "APPWRITE_ENABLED": {
+      "description": "Enable Appwrite backend",
+      "value": "true"
+    },
+    "APPWRITE_ENDPOINT": {
+      "description": "Appwrite server endpoint",
+      "value": "https://fra.cloud.appwrite.io/v1"
+    },
+    "APPWRITE_PROJECT_ID": {
+      "description": "Your Appwrite project ID",
+      "required": true
+    },
+    "APPWRITE_API_KEY": {
+      "description": "Your Appwrite API key with database and storage permissions",
+      "required": true
+    },
+    "APPWRITE_DATABASE_ID": {
+      "description": "Your Appwrite database ID",
+      "required": true
+    },
+    "APPWRITE_COLLECTION_REPORTS_ID": {
+      "description": "Your Appwrite reports collection ID",
+      "required": true
+    },
+    "APPWRITE_BUCKET_EVIDENCE_ID": {
+      "description": "Your Appwrite evidence bucket ID",
+      "required": true
+    },
+    "NEXT_PUBLIC_APPWRITE_ENDPOINT": {
+      "description": "Appwrite endpoint for client-side",
+      "value": "https://fra.cloud.appwrite.io/v1"
+    },
+    "NEXT_PUBLIC_APPWRITE_PROJECT_ID": {
+      "description": "Your Appwrite project ID for client-side",
+      "required": true
+    },
+    "NEXT_PUBLIC_APPWRITE_PROJECT_NAME": {
+      "description": "Your Appwrite project name",
+      "value": "ScamMapper"
+    }
+  },
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    }
+  ],
+  "stack": "heroku-24"
+}
