@@ -32,16 +32,25 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+        <link rel="manifest" href="/site.webmanifest" />
+        <link rel="shortcut icon" href="/favicon.ico" />
+        <meta name="theme-color" content="#ffffff" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-50 text-slate-900`}>
         <AuthProvider>
           <header className="sticky top-0 z-[9999] w-full border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
             <div className="mx-auto w-full max-w-7xl px-4">
               <div className="flex h-16 items-center justify-between">
-                {/* Logo - responsive text */}
-                <Link href="/" className="text-xl font-bold text-slate-900 hover:text-slate-600 transition-colors">
-                  <span className="hidden sm:inline">ScamMapper</span>
-                  <span className="sm:hidden">SM</span>
+                {/* Logo - responsive image */}
+                <Link href="/" className="flex items-center h-10 w-10">
+                  <img
+                    src="/logo.png"
+                    alt="ScamMapper Logo"
+                    className="h-8 w-8 sm:h-10 sm:w-10 object-contain"
+                  />
                 </Link>
                 
                 {/* Desktop Navigation */}
@@ -73,9 +82,18 @@ export default function RootLayout({
           </main>
           <footer className="border-t border-slate-200 bg-white py-8 text-sm text-slate-600">
             <div className="mx-auto w-full max-w-7xl px-4 flex items-center justify-between">
-              <span>© {new Date().getFullYear()} ScamMapper</span>
+              <span className="flex items-center gap-2">
+                <img
+                  src="/logo.png"
+                  alt="ScamMapper Logo"
+                  className="h-6 w-6 object-contain inline-block align-middle"
+                />
+                <span className="sr-only">ScamMapper</span>
+                © {new Date().getFullYear()}
+              </span>
               <div className="flex gap-6">
                 <Link href="/incidents" className="hover:text-slate-900 transition-colors">Browse</Link>
+                <Link href="/legal" className="hover:text-slate-900 transition-colors">Legal</Link>
               </div>
             </div>
           </footer>

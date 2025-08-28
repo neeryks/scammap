@@ -48,18 +48,23 @@ export default async function Home() {
         <div className="mx-auto max-w-4xl px-4 py-16 text-center sm:py-24">
           <div className="space-y-6">
             <div className="space-y-4">
+              <img
+                src="/logo.png"
+                alt="ScamMapper Logo"
+                className="mx-auto mb-4 h-16 w-16 object-contain"
+              />
               <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-6xl lg:text-7xl">
                 ScamMapper
               </h1>
               <p className="mx-auto max-w-2xl text-lg leading-8 text-slate-600">
-                Community-powered platform to report and track dating scams, venue traps, and restaurant overcharging across India
+                Community-powered platform for reporting and tracking scams, unsafe venues, consumer issues, and other public-safety concerns worldwide
               </p>
             </div>
             
             {/* Enhanced Search Bar */}
             <div className="mx-auto max-w-xl relative z-50">
               <SearchBar 
-                placeholder="Search venues, cities, scam types..."
+                placeholder={typeof window !== 'undefined' && window.innerWidth < 640 ? 'Search' : 'Search venues, cities, scam types...'}
                 showLiveResults={true}
                 size="large"
               />

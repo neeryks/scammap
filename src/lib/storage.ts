@@ -1,4 +1,3 @@
-import { initDB, db } from '@/lib/db'
 import type { Report, Evidence } from '@/lib/types'
 import { computeScamMeterScore } from '@/lib/scoring'
 import dayjs from 'dayjs'
@@ -48,21 +47,7 @@ export type ListReportsParams = {
 }
 
 export async function listReports(params: ListReportsParams = {}) {
-  if (!useAppwrite) {
-    await initDB()
-    let results = db.data!.reports
-    if (params.category) results = results.filter(r => r.category === params.category)
-    if (params.city) results = results.filter(r => r.city === params.city)
-    if (params.reporter_user_id) results = results.filter(r => r.reporter_user_id === params.reporter_user_id)
-    
-    // Sort by created_at in descending order (newest first)
-    results = results.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    
-    const total = results.length
-    const start = params.offset ?? 0
-    const end = (params.limit ?? 50) + start
-    return { total, items: results.slice(start, end) }
-  }
+  // Only Appwrite mode supported
   ensureAppwrite()
   const q: string[] = []
   if (params.category) q.push(Query.equal('category', params.category))
@@ -83,10 +68,7 @@ export async function listReports(params: ListReportsParams = {}) {
 }
 
 export async function getReport(id: string) {
-  if (!useAppwrite) {
-    await initDB()
-    return db.data!.reports.find(r => r.id === id) || null
-  }
+  // Only Appwrite mode supported
   ensureAppwrite()
   const doc = await databases!.getDocument(
     process.env.APPWRITE_DATABASE_ID!,
@@ -101,11 +83,7 @@ export type CreateReportInput = Omit<Report, 'id' | 'created_at' | 'scam_meter_s
 }
 
 export async function createReport(input: CreateReportInput) {
-  let corroborationCount = 0
-  if (!useAppwrite) {
-    await initDB()
-    corroborationCount = db.data!.reports.filter(r => r.venue_name && r.venue_name === input.venue_name).length
-  } else {
+    let corroborationCount = 0
     ensureAppwrite()
     try {
       const list = await databases!.listDocuments(
@@ -119,7 +97,6 @@ export async function createReport(input: CreateReportInput) {
       console.warn('Could not query venue_name for corroboration count:', error)
       corroborationCount = 0
     }
-  }
 
   // Normalize location to plain "lat,lon" string (drop precision suffix to align with simple string attribute)
   const normalizedLocation = typeof input.location === 'string' || !input.location
@@ -152,11 +129,7 @@ export async function createReport(input: CreateReportInput) {
   const score = computeScamMeterScore(base, corroborationCount, false, false, false)
   base.scam_meter_score = score.score
 
-  if (!useAppwrite) {
-    db.data!.reports.push(base)
-    await db.write()
-    return { report: base, scoring: score }
-  }
+  // Only Appwrite mode supported
 
   ensureAppwrite()
   // Filter payload to only known attributes to avoid document_invalid_structure
@@ -182,7 +155,7 @@ export async function createReport(input: CreateReportInput) {
     const retryPayload = { ...payload }
     // Common culprits when schema not yet updated
     ;['scam_meter_score','reporter_visibility','loss_amount_inr','location'].forEach(k => {
-      if (!allowed.has(k)) delete (retryPayload as any)[k]
+      if (!allowed.has(k)) delete (retryPayload as Record<string, unknown>)[k]
     })
     try {
       created = await databases!.createDocument(
@@ -199,25 +172,52 @@ export async function createReport(input: CreateReportInput) {
 }
 
 export async function createEvidenceFromBuffer(buf: Buffer): Promise<Evidence> {
-  if (!useAppwrite) {
-    throw new Error('Local evidence storage handled in evidence route')
+  if (!useAppwrite) throw new Error('Appwrite disabled (APPWRITE_ENABLED != true)')
+  if (!process.env.APPWRITE_BUCKET_EVIDENCE_ID) throw new Error('Missing APPWRITE_BUCKET_EVIDENCE_ID')
+  // Diagnostic marker to ensure latest implementation is executing
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[evidence] createEvidenceFromBuffer v2 (REST multipart) size=', buf.length)
   }
-  ensureAppwrite()
-  const fileRes = await storage!.createFile(
-    process.env.APPWRITE_BUCKET_EVIDENCE_ID!,
-    'unique()',
-    // node-appwrite < 15 lacks InputFile in types; Buffer works in runtime
-    buf as unknown as File
-  )
-  const record: Evidence = {
-    id: fileRes.$id,
+  // Use direct REST multipart upload to avoid SDK InputFile incompatibility
+  const endpoint = process.env.APPWRITE_ENDPOINT!.replace(/\/$/, '')
+  const project = process.env.APPWRITE_PROJECT_ID!
+  const apiKey = process.env.APPWRITE_API_KEY!
+  const bucket = process.env.APPWRITE_BUCKET_EVIDENCE_ID!
+
+  const form = new FormData()
+  form.append('fileId', 'unique()')
+  const filename = `evidence-${Date.now()}.webp`
+  const uint8 = new Uint8Array(buf)
+  const blob = new Blob([uint8], { type: 'image/webp' })
+  form.append('file', blob, filename)
+
+  const res = await fetch(`${endpoint}/storage/buckets/${bucket}/files`, {
+    method: 'POST',
+    headers: {
+      'X-Appwrite-Project': project,
+      'X-Appwrite-Key': apiKey
+    },
+    body: form as any
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`Appwrite upload failed (${res.status}): ${text}`)
+  }
+  const json: any = await res.json()
+  const fileId = json?.$id
+  if (!fileId) throw new Error('Appwrite response missing $id')
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[evidence] uploaded file id', fileId)
+  }
+  const proxyUrl = `/api/evidence/file/${fileId}`
+  return {
+    id: fileId,
     type: 'image',
-    storage_url: fileRes.$id,
+    storage_url: proxyUrl,
     hash: '',
     exif_removed: true,
     redactions_applied: true,
     pii_flags: [],
     ocr_text: ''
   }
-  return record
 }

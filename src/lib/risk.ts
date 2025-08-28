@@ -76,7 +76,9 @@ export function haversineDistance(
 /**
  * Extract coordinates from various location formats
  */
-export function getCoordinates(location: any): { lat: number; lon: number } | null {
+type LocationLike = string | { lat: number; lon: number } | undefined | null
+
+export function getCoordinates(location: LocationLike): { lat: number; lon: number } | null {
   if (!location) return null
   
   if (typeof location === 'object' && 'lat' in location && 'lon' in location) {

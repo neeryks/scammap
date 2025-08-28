@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { initDB, db } from '@/lib/db'
-import { v4 as uuidv4 } from 'uuid'
 import crypto from 'crypto'
 import { processImage, detectPII } from '@/lib/moderation'
-import fs from 'fs/promises'
-import path from 'path'
 import { createEvidenceFromBuffer } from '@/lib/storage'
 import { validateAppwriteJWT } from '@/lib/appwriteAuth'
 import sharp from 'sharp'
@@ -23,7 +19,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid or expired session' }, { status: 401 })
   }
 
-  await initDB()
+  if (process.env.APPWRITE_ENABLED !== 'true') {
+    return NextResponse.json({ error: 'Evidence upload requires Appwrite (APPWRITE_ENABLED=true)' }, { status: 500 })
+  }
 
   // Parse multipart form
   const formData = await req.formData()
@@ -31,7 +29,8 @@ export async function POST(req: NextRequest) {
   if (!file) return NextResponse.json({ error: 'file missing' }, { status: 400 })
 
   // Validate file type - only images
-  if (!file.type.startsWith('image/')) {
+  const mime = file.type || ''
+  if (!mime.startsWith('image/')) {
     return NextResponse.json({ error: 'Only image files are allowed' }, { status: 400 })
   }
 
@@ -46,35 +45,14 @@ export async function POST(req: NextRequest) {
   // Process without additional compression to maintain quality
   const processed = await processImage(webpBuffer, { blur: false })
   const hash = crypto.createHash('sha256').update(processed).digest('hex')
-  const useAppwrite = process.env.APPWRITE_ENABLED === 'true'
-  
-  // For now, always use local storage since Appwrite storage setup is incomplete
-  // if (useAppwrite) {
-  //   const record = await createEvidenceFromBuffer(processed)
-  //   return NextResponse.json({ ...record, hash })
-  // }
-  
-  const id = uuidv4()
-  const uploadDir = path.join(process.cwd(), 'public', 'uploads')
-  await fs.mkdir(uploadDir, { recursive: true })
-  const filePath = path.join(uploadDir, `${id}.webp`)
-  await fs.writeFile(filePath, processed)
+
+  // Store in Appwrite
+  const record = await createEvidenceFromBuffer(processed)
+  record.hash = hash
 
   // Basic OCR placeholder (skipped for speed); hook tesseract.js later
-  const ocr_text = ''
-  const pii_flags = detectPII(ocr_text)
+  record.ocr_text = ''
+  record.pii_flags = detectPII('')
 
-  const record: import('@/lib/types').Evidence = {
-    id,
-    type: 'image',
-    storage_url: `/uploads/${id}.webp`,
-    hash,
-    exif_removed: true,
-    redactions_applied: true,
-    pii_flags,
-    ocr_text
-  }
-  db.data!.evidence.push(record)
-  await db.write()
   return NextResponse.json(record)
 }

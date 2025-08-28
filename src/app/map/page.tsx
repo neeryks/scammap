@@ -162,11 +162,9 @@ const MapComponent = ({ reports, onMarkerClick }: { reports: Report[]; onMarkerC
 interface Filters {
   searchQuery: string
   category: string
-  city: string
   riskRange: [number, number]
   dateRange: string
   showVerified: boolean
-  minLoss: number
 }
 
 export default function MapPage() {
@@ -176,11 +174,9 @@ export default function MapPage() {
   const [filters, setFilters] = useState<Filters>({
     searchQuery: '',
     category: 'all',
-    city: 'all',
     riskRange: [0, 100],
     dateRange: 'all',
-    showVerified: false,
-    minLoss: 0
+    showVerified: false
   })
 
   // Fetch reports
@@ -213,15 +209,10 @@ export default function MapPage() {
       // Category filter
       if (filters.category !== 'all' && r.category !== filters.category) return false
 
-      // City filter
-      if (filters.city !== 'all' && r.city !== filters.city) return false
-
-      // Risk range
+  // Risk range
       const riskScore = r.risk_score || r.scam_meter_score || 0
       if (riskScore < filters.riskRange[0] || riskScore > filters.riskRange[1]) return false
 
-      // Minimum loss
-      if (filters.minLoss > 0 && (r.loss_amount_inr || 0) < filters.minLoss) return false
 
       // Date range
       if (filters.dateRange !== 'all') {
@@ -248,7 +239,6 @@ export default function MapPage() {
     ).join(' ')
   }
 
-  const uniqueCities = [...new Set(reports.map(r => r.city).filter(Boolean))].sort()
   const uniqueCategories = [...new Set(reports.map(r => r.category))]
 
   return (
@@ -309,22 +299,7 @@ export default function MapPage() {
                   </Select>
                 </div>
 
-                <div>
-                  <label className="text-sm font-medium mb-2 block">City</label>
-                  <Select value={filters.city} onValueChange={(value) => setFilters(prev => ({ ...prev, city: value }))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Cities</SelectItem>
-                      {uniqueCities.map(city => city && (
-                        <SelectItem key={city} value={city}>
-                          {city}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+
 
                 <div>
                   <label className="text-sm font-medium mb-3 block">Risk Score Range</label>
@@ -357,15 +332,7 @@ export default function MapPage() {
                   </Select>
                 </div>
 
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Minimum Loss (₹)</label>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={filters.minLoss}
-                    onChange={(e) => setFilters(prev => ({ ...prev, minLoss: parseInt(e.target.value) || 0 }))}
-                  />
-                </div>
+
 
                 <Button 
                   variant="outline" 
@@ -373,11 +340,9 @@ export default function MapPage() {
                   onClick={() => setFilters({
                     searchQuery: '',
                     category: 'all',
-                    city: 'all',
                     riskRange: [0, 100],
                     dateRange: 'all',
-                    showVerified: false,
-                    minLoss: 0
+                    showVerified: false
                   })}
                 >
                   Clear Filters

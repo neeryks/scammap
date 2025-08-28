@@ -93,11 +93,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
   const input = parsed.data
-  // Auth guaranteed now
+  // Auth guaranteed now; link report to authenticated user so it shows in "My Reports"
   const reporter_visibility = 'anonymous'
-  const reporter_user_id = undefined
-  
-  // Create the report first
+  const reporter_user_id = verified.userId
+
+  // Create the report (persist reporter_user_id for ownership + filtering)
   const { report, scoring } = await createReport({ ...input, reporter_visibility, reporter_user_id })
   
   // Calculate risk score for the new report

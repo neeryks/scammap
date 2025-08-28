@@ -23,8 +23,8 @@ export default function TestUploadPage() {
       const formData = new FormData()
       formData.append('file', file)
 
-      console.log('Uploading to /api/test-evidence...')
-      const response = await fetch('/api/test-evidence', {
+    console.log('Uploading to /api/evidence...')
+    const response = await fetch('/api/evidence', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${jwt.jwt}`

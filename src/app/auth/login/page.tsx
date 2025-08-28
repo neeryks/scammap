@@ -28,8 +28,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
+  <div className="h-[100vh] bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center px-4">
+      <div className="w-full max-w-md mx-auto flex flex-col items-center">
         {/* Header */}
         <div className="text-center mb-8">
           <Link href="/" className="text-2xl font-bold text-slate-900 hover:text-slate-600 transition-colors">
@@ -40,7 +40,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <Card className="shadow-lg border-0">
+  <Card className="w-full shadow-lg border-0">
           <CardHeader>
             <CardTitle className="text-center">
               Sign In
@@ -73,7 +73,7 @@ export default function LoginPage() {
         </Card>
 
         {/* Back to home link */}
-        <div className="text-center mt-6">
+  <div className="text-center mt-6 w-full">
           <Link href="/" className="text-sm text-slate-500 hover:text-slate-700 transition-colors">
             ← Back to ScamMapper
           </Link>
