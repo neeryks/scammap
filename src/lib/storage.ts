@@ -209,7 +209,7 @@ export async function createEvidenceFromBuffer(buf: Buffer): Promise<Evidence> {
   if (process.env.NODE_ENV !== 'production') {
     console.log('[evidence] uploaded file id', fileId)
   }
-  const proxyUrl = `/api/evidence/file/${fileId}`
+  const proxyUrl = `/api/evidence/raw/${fileId}`
   return {
     id: fileId,
     type: 'image',

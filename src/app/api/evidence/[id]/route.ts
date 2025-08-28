@@ -28,7 +28,7 @@ export async function GET(
     return NextResponse.json({
       id: file.$id,
       type: 'image',
-      storage_url: `/api/evidence/file/${file.$id}`
+      storage_url: `/api/evidence/raw/${file.$id}`
     })
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Not found' }, { status: 404 })
