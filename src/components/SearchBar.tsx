@@ -29,7 +29,7 @@ interface SearchBarProps {
 }
 
 export default function SearchBar({ 
-  placeholder = "Search venues, cities, scam types...",
+  placeholder = "Search...",
   defaultValue = "",
   className = "",
   size = 'large',

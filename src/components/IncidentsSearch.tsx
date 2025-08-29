@@ -17,7 +17,7 @@ export default function IncidentsSearch({ defaultValue = "", category = "all" }:
   return (
     <div className="mx-auto max-w-xl">
       <SearchBar 
-        placeholder={typeof window !== 'undefined' && window.innerWidth < 640 ? 'Search' : 'Search venues, cities, scam types...'}
+        placeholder={typeof window !== 'undefined' && window.innerWidth < 640 ? 'Search' : 'Search...'}
         defaultValue={defaultValue}
         size="default"
         showLiveResults={true}

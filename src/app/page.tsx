@@ -2,7 +2,9 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 import SearchBar from '@/components/SearchBar'
+import { AlertTriangle } from 'lucide-react'
 
 interface Report {
   id: string
@@ -39,172 +41,183 @@ function formatCategory(category: string): string {
   ).join(' ')
 }
 
+function getRiskLevel(score: number) {
+  if (score >= 80) return { label: 'High Risk', color: 'bg-red-500' }
+  if (score >= 60) return { label: 'Medium Risk', color: 'bg-orange-500' }
+  if (score >= 40) return { label: 'Low Risk', color: 'bg-yellow-500' }
+  return { label: 'Very Low Risk', color: 'bg-green-500' }
+}
+
 export default async function Home() {
   const reports = await getRecentReports()
+  
   return (
-    <div className="min-h-screen">
-      {/* Hero Section with improved spacing */}
-      <div className="relative bg-gradient-to-b from-slate-50 to-white">
-        <div className="mx-auto max-w-4xl px-4 py-16 text-center sm:py-24">
-          <div className="space-y-6">
+    <div className="min-h-screen bg-white">
+      {/* Hero Section */}
+      <section className="relative bg-gradient-to-b from-slate-50 to-white border-b">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+          <div className="text-center space-y-8">
             <div className="space-y-4">
-              <img
-                src="/logo.png"
-                alt="ScamMapper Logo"
-                className="mx-auto mb-4 h-16 w-16 object-contain"
-              />
-              <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-6xl lg:text-7xl">
+              <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
                 ScamMapper
               </h1>
-              <p className="mx-auto max-w-2xl text-lg leading-8 text-slate-600">
-                Community-powered platform for reporting and tracking scams, unsafe venues, consumer issues, and other public-safety concerns worldwide
+              <p className="mx-auto max-w-3xl text-xl text-slate-600 leading-8">
+                Community-powered platform for reporting and tracking scams, unsafe venues, and consumer issues across India
               </p>
             </div>
             
-            {/* Enhanced Search Bar */}
-            <div className="mx-auto max-w-xl relative z-50">
+            {/* Search Bar */}
+            <div className="mx-auto max-w-2xl">
               <SearchBar 
-                placeholder={typeof window !== 'undefined' && window.innerWidth < 640 ? 'Search' : 'Search venues, cities, scam types...'}
+                placeholder="Search venues, cities, or scam types..."
                 showLiveResults={true}
                 size="large"
               />
             </div>
+            
+            {/* Single Total Cases Stat */}
+            <div className="flex justify-center">
+              <div className="text-center space-y-3 mt-8">
+                <div className="flex items-center justify-center w-20 h-20 mx-auto bg-slate-100 rounded-full">
+                  <AlertTriangle className="w-10 h-10 text-slate-700" />
+                </div>
+                <div className="text-5xl font-bold text-slate-900 sm:text-6xl">{reports.length}</div>
+                <div className="text-xl text-slate-600 font-medium">Total Cases Reported</div>
+                <div className="text-sm text-slate-500">Help protect your community</div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Enhanced Recent Reports Section */}
-      <div className="bg-slate-50 py-24">
-        <div className="mx-auto max-w-7xl px-4">
+      {/* Recent Reports Section */}
+      <section className="py-16 sm:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="space-y-12">
-            {/* Section Header */}
             <div className="text-center space-y-4">
-              <h2 className="text-3xl font-bold text-slate-900 mb-8 text-center">
+              <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl">
                 Recent Incident Reports
               </h2>
               <p className="mx-auto max-w-2xl text-lg text-slate-600">
-                Learn from community experiences. These are the latest scam reports from across India.
+                Learn from community experiences and stay informed about the latest scam reports
               </p>
             </div>
             
-            {/* Enhanced 12-Card Grid - matching incidents page style */}
-            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {reports.length > 0 ? reports.map((report) => (
-                <Link key={report.id} href={`/incidents/${report.id}`}>
-                  <Card className="group relative cursor-pointer overflow-hidden border-0 bg-white shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-2">
-                    {/* Gradient overlay for high-risk incidents */}
-                    {(report.risk_score || report.scam_meter_score) && (report.risk_score || report.scam_meter_score)! > 90 && (
-                      <div className="absolute inset-0 bg-gradient-to-br from-slate-500/5 to-slate-600/5 pointer-events-none" />
-                    )}
-                    
-                    <CardHeader className="pb-4 relative">
-                      <div className="flex items-start justify-between mb-3">
-                        <Badge 
-                          className="text-xs font-semibold px-3 py-1 bg-black text-white"
-                        >
-                          {formatCategory(report.category)}
-                        </Badge>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <CardTitle className="text-lg font-bold group-hover:text-slate-600 transition-colors line-clamp-2">
-                          {report.venue_name || report.city || 'Unknown location'}
-                        </CardTitle>
-                        {report.address && (
-                          <div className="flex items-center gap-2 text-slate-600 text-sm">
-                            <span className="inline-block w-2 h-2 bg-slate-400 rounded-full"></span>
-                            {report.address}
-                          </div>
-                        )}
-                        <div className="flex items-center gap-3 text-sm">
+            {/* Reports Grid */}
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {reports.length > 0 ? reports.map((report) => {
+                const riskScore = report.risk_score || report.scam_meter_score || 0
+                const riskLevel = getRiskLevel(riskScore)
+                
+                return (
+                  <Link key={report.id} href={`/incidents/${report.id}`}>
+                    <Card className="group h-full cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1 border-0 bg-white shadow-sm">
+                      <CardHeader className="space-y-3">
+                        <div className="flex items-start justify-between">
+                          <Badge className="bg-slate-900 text-white">
+                            {formatCategory(report.category)}
+                          </Badge>
                           <div className="flex items-center gap-1">
-                            <div className={`w-3 h-3 rounded-full ${
-                              (report.risk_score || report.scam_meter_score || 0) >= 80 ? 'bg-red-500' : 
-                              (report.risk_score || report.scam_meter_score || 0) >= 60 ? 'bg-orange-500' : 
-                              (report.risk_score || report.scam_meter_score || 0) >= 40 ? 'bg-yellow-500' : 'bg-green-500'
-                            }`} />
-                            <span className="font-semibold text-slate-700">
-                              Risk: {report.risk_score || report.scam_meter_score || 0}/100
-                            </span>
+                            <div className={`w-2 h-2 rounded-full ${riskLevel.color}`} />
+                            <span className="text-xs text-slate-500">{riskScore}</span>
                           </div>
                         </div>
-                      </div>
-                    </CardHeader>
-                    
-                    <CardContent className="pt-0">
-                      <div className="space-y-4">
-                        <p className="line-clamp-3 text-sm leading-relaxed text-slate-600">
+                        
+                        <div className="space-y-2">
+                          <CardTitle className="text-lg leading-tight group-hover:text-slate-600 transition-colors line-clamp-2">
+                            {report.venue_name || report.city || 'Unknown Location'}
+                          </CardTitle>
+                          {report.address && (
+                            <p className="text-sm text-slate-500 line-clamp-1">
+                              {report.address}
+                            </p>
+                          )}
+                        </div>
+                      </CardHeader>
+                      
+                      <CardContent className="space-y-4">
+                        <p className="text-sm text-slate-600 line-clamp-3 leading-relaxed">
                           {report.description}
                         </p>
                         
-                        {report.tactic_tags && report.tactic_tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mb-4">
-                            {report.tactic_tags.slice(0, 2).map((tag, i) => (
-                              <Badge key={i} className="text-xs px-2 py-1 bg-black text-white">
-                                {tag}
-                              </Badge>
-                            ))}
-                            {report.tactic_tags.length > 2 && (
-                              <Badge className="text-xs px-2 py-1 bg-black text-white">
-                                +{report.tactic_tags.length - 2} more
-                              </Badge>
-                            )}
-                          </div>
-                        )}
+                        <Separator />
                         
-                        <div className="flex items-center justify-between">
-                          <div className="text-sm text-slate-500">
-                            {new Date(report.created_at).toLocaleDateString()}
-                          </div>
-                          <div className="flex items-center gap-1 text-slate-400 group-hover:text-slate-600 transition-colors">
-                            <span className="text-xs">View details</span>
-                            <svg className="w-3 h-3 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
-                          </div>
+                        <div className="flex items-center justify-between text-xs text-slate-500">
+                          <span>{new Date(report.created_at).toLocaleDateString()}</span>
+                          {report.loss_amount_inr && (
+                            <span className="font-medium text-red-600">
+                              ₹{(report.loss_amount_inr / 1000).toFixed(0)}K loss
+                            </span>
+                          )}
                         </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                )
+              }) : (
+                Array.from({ length: 8 }, (_, i) => (
+                  <Card key={i} className="h-full animate-pulse">
+                    <CardHeader className="space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="h-6 w-20 bg-slate-200 rounded" />
+                        <div className="h-4 w-8 bg-slate-200 rounded" />
                       </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              )) : (
-                // Fallback placeholder cards if no data
-                Array.from({ length: 12 }, (_, i) => (
-                  <Card key={i} className="border-0 bg-white shadow-lg">
-                    <CardHeader className="pb-4">
-                      <Badge className="text-xs font-semibold px-3 py-1 w-fit bg-black text-white">
-                        Loading...
-                      </Badge>
-                      <CardTitle className="text-lg font-bold text-slate-400">
-                        Loading incident data...
-                      </CardTitle>
+                      <div className="h-6 w-3/4 bg-slate-200 rounded" />
                     </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="text-sm text-slate-400">
-                        Please wait while we load the latest reports
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="h-4 w-full bg-slate-200 rounded" />
+                        <div className="h-4 w-2/3 bg-slate-200 rounded" />
                       </div>
+                      <div className="h-4 w-1/2 bg-slate-200 rounded" />
                     </CardContent>
                   </Card>
                 ))
               )}
             </div>
             
-            {/* View All Button - only shows when there are 12 or more reports */}
-            {reports.length >= 12 && (
-              <div className="text-center pt-8">
-                <Link href="/incidents">
-                  <Button 
-                    size="lg"
-                    className="h-12 px-8 font-semibold bg-slate-900 hover:bg-slate-800 text-white"
-                  >
-                    View All Incidents
+            {/* View All Button */}
+            <div className="text-center pt-8">
+              <Link href="/incidents">
+                <Button size="lg" className="bg-slate-900 hover:bg-slate-800 text-white px-8 py-3">
+                  View All Incidents
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Call to Action */}
+      <section className="bg-slate-50 py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="bg-white rounded-2xl border p-8 sm:p-12 text-center">
+            <div className="mx-auto max-w-3xl space-y-6">
+              <div className="flex items-center justify-center w-16 h-16 mx-auto bg-slate-900 rounded-full">
+                <AlertTriangle className="w-8 h-8 text-white" />
+              </div>
+              <h2 className="text-3xl font-bold text-slate-900">
+                Help Protect Your Community
+              </h2>
+              <p className="text-lg text-slate-600">
+                Report incidents to help others avoid scams and unsafe situations. Your contribution makes a difference.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link href="/report">
+                  <Button size="lg" className="bg-slate-900 hover:bg-slate-800 text-white px-8 py-3">
+                    Report an Incident
+                  </Button>
+                </Link>
+                <Link href="/map">
+                  <Button variant="outline" size="lg" className="px-8 py-3">
+                    View Map
                   </Button>
                 </Link>
               </div>
-            )}
+            </div>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   )
 }
