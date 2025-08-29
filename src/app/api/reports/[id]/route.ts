@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateAppwriteJWT } from '@/lib/appwriteAuth'
-import { initDB, db } from '@/lib/db'
 import { Client, Databases } from 'node-appwrite'
 import { getReport as getOne } from '@/lib/storage'
-
-const useAppwrite = process.env.APPWRITE_ENABLED === 'true'
 
 export async function DELETE(req: NextRequest) {
   const id = req.nextUrl.pathname.split('/').pop() as string
@@ -15,19 +12,7 @@ export async function DELETE(req: NextRequest) {
   if (!verified) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = verified.userId
 
-  if (!useAppwrite) {
-    await initDB()
-    const idx = db.data!.reports.findIndex(r => r.id === id)
-    if (idx === -1) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    const report = db.data!.reports[idx]
-    if (report.reporter_user_id && report.reporter_user_id !== userId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
-    db.data!.reports.splice(idx, 1)
-    await db.write()
-    return NextResponse.json({ ok: true })
-  }
-
+  // Use Appwrite for all operations
   const client = new Client()
     .setEndpoint(process.env.APPWRITE_ENDPOINT!)
     .setProject(process.env.APPWRITE_PROJECT_ID!)
